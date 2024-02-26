@@ -10,10 +10,24 @@ async def add_user(telegram_id: int, username: str, referrer_id: int) -> bool:
         if not user:
             user = User(telegram_id=telegram_id, username=username, referrer_id=referrer_id)
             s.add(user)
+            if referrer_id != -1:
+                referrer = await s.scalar(select(User).where(User.telegram_id == referrer_id))
+                reflist = referrer.get_referals()
+                reflist.append(telegram_id)
+                referrer.set_referals(reflist)
+                await s.merge(referrer)
             await s.commit()
             return True
         else:
             return False
+        
+async def add_referrer_balance(user: User, sum: float) -> None:
+    async with async_session() as s:
+        user = await s.scalar(select(User).where(User.telegram_id == user.referrer_id))
+        user.balance = (user.balance + (sum / user.ref_percentage))
+        user.total_balance = (user.total_balance + (sum / user.ref_percentage))
+        await s.merge(user)
+        await s.commit()
     
 async def get_all_users() -> tuple[User]:
     async with async_session() as s:

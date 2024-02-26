@@ -19,11 +19,14 @@ class User(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True)
     username: Mapped[str] = mapped_column(String)
+    ref_percentage: Mapped[int] = mapped_column(Integer, default=10)
     balance: Mapped[float] = mapped_column(Float, default=0.0)
+    total_balance: Mapped[float] = mapped_column(Float, default=0.0)
     register_date: Mapped[int] = mapped_column(BigInteger, default=int(time.time()))
     isAdmin: Mapped[bool] = mapped_column(Boolean, default=False)
     referrer_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.telegram_id"), default=-1)
     referals: Mapped[str] = mapped_column(String, default="")
+    promocodes_used: Mapped[str] = mapped_column(String, default="")
     hwid: Mapped[str] = mapped_column(String, default="@")
 
     def set_referals(self, referals):
@@ -31,6 +34,12 @@ class User(Base):
 
     def get_referals(self):
         return json.loads(self.referals) if self.referals else []
+    
+    def get_promocodes(self, promocodes_used):
+        self.promocodes_used = json.dumps(promocodes_used)
+
+    def set__promocodes(self):
+        return json.loads(self.promocodes_used) if self.promocodes_used else []
 
 class Product(Base):
     __tablename__ = "products"
