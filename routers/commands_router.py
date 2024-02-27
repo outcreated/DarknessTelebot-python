@@ -5,7 +5,7 @@ from data import ikb
 from aiogram import Router, Bot, F
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
-from database import requests_user
+from database import requests_user, requests_sub, requests_product
 from database.database_core import User
 
 command_router = Router()
@@ -57,10 +57,24 @@ async def generate_user_text_profile(user: User) -> str:
     ► [ 💰 ] Реф. баланс > <code>{user.balance} $</code>
     ➖➖➖➖➖➖➖➖➖➖
     """
+    subs = await requests_sub.get_user_subscriptions(user.telegram_id)
+    for sub in subs:
+        product = await requests_product.get_product_by_id(sub.product_id)
+        profile += f"""
+► [ 🔑 {product.name} ]
+    ► Статус > Активна
+    ► До > <code>{await timestamp_to_sub_end_date(sub.end_date)}</code>
+    ➖➖➖➖➖➖➖➖➖➖
+                    """
+    
 
     return profile
 
 async def timestamp_to_date(timestamp: int) -> str:
     current_datetime = datetime.datetime.fromtimestamp(timestamp)
     return current_datetime.strftime('%d-%m-%Y')
+
+async def timestamp_to_sub_end_date(timestamp: int) -> str:
+    current_datetime = datetime.datetime.fromtimestamp(timestamp)
+    return current_datetime.strftime('%d-%m-%Y | %H:%M:%S')
     

@@ -28,7 +28,7 @@ class User(Base):
     referals: Mapped[str] = mapped_column(String, default="")
     promocodes_used: Mapped[str] = mapped_column(String, default="")
     hwid: Mapped[str] = mapped_column(String, default="@")
-
+ 
     def set_referals(self, referals):
         self.referals = json.dumps(referals)
 
@@ -38,30 +38,56 @@ class User(Base):
     def get_promocodes(self, promocodes_used):
         self.promocodes_used = json.dumps(promocodes_used)
 
-    def set__promocodes(self):
+    def set_promocodes(self):
         return json.loads(self.promocodes_used) if self.promocodes_used else []
+    
+class Promocode(Base):
+    __tablename__ = "promocodes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # subscription_id: Mapped[int] = mapped_column(Integer, ForeignKey("subscriptions_types.id"))
+    total_uses: Mapped[int] = mapped_column(Integer, default=0)
+    uses_left: Mapped[int] = mapped_column(Integer, default=0)
+    end_date: Mapped[int] = mapped_column(BigInteger, default=int(time.time()))
+    description: Mapped[str] = mapped_column(String, default="")
+    status: Mapped[bool] = mapped_column(Boolean, default=False)
+    used_users: Mapped[str] = mapped_column(String, default="")
+
+    def get_used_users(self, used_users):
+        self.used_users = json.dumps(used_users)
+
+    def set_used_users(self):
+        return json.loads(self.used_users) if self.used_users else []
 
 class Product(Base):
     __tablename__ = "products"
 
-    id = mapped_column(Integer, primary_key=True, index=True)
-    name = mapped_column(String, index=True)
-    uuid = mapped_column(String, unique=True)
-    description = mapped_column(String)
-    status = mapped_column(Boolean, default=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String, default="")
+    description: Mapped[str] = mapped_column(String, default="")
+    version: Mapped[str] = mapped_column(String, default="1.0.0")
+    active: Mapped[bool] = mapped_column(Boolean, default=False)
 
-    subscriptions = relationship("Subscription", back_populates="product")
+class SubscriptionPattern(Base):
+    __tablename__ = "subscription_patterns"
 
-class Subscription(Base):
-    __tablename__ = "subscriptions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cost: Mapped[float] = mapped_column(Float, default=0.0)
+    duration: Mapped[int] = mapped_column(BigInteger, default=0)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.id'))
+    product: Mapped[Product] = relationship(Product)
+    
 
-    id = mapped_column(Integer, primary_key=True, index=True)
-    product_id = mapped_column(Integer, ForeignKey("products.id"))
-    duration = mapped_column(Integer)
-    price = mapped_column(Integer)
-    user_id = mapped_column(Integer)
+class UserSubscription(Base):
+    __tablename__ = "user_subscriptions"
 
-    product = relationship("Product", back_populates="subscriptions")
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    telegram_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.telegram_id'))
+    start_date: Mapped[int] = mapped_column(BigInteger, default=int(time.time()))
+    end_date: Mapped[int] = mapped_column(BigInteger, default=0)
+    user: Mapped[Product] = relationship(User)
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.id'))
+    product: Mapped[Product] = relationship(Product)
 
 async def init_database():
     async with engine.begin() as conn:
