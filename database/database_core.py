@@ -35,10 +35,10 @@ class User(Base):
     def get_referals(self):
         return json.loads(self.referals) if self.referals else []
     
-    def get_promocodes(self, promocodes_used):
+    def set_promocodes(self, promocodes_used):
         self.promocodes_used = json.dumps(promocodes_used)
 
-    def set_promocodes(self):
+    def get_promocodes(self):
         return json.loads(self.promocodes_used) if self.promocodes_used else []
     
 class Promocode(Base):
@@ -46,17 +46,19 @@ class Promocode(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     # subscription_id: Mapped[int] = mapped_column(Integer, ForeignKey("subscriptions_types.id"))
-    total_uses: Mapped[int] = mapped_column(Integer, default=0)
+    name: Mapped[str] = mapped_column(String)
     uses_left: Mapped[int] = mapped_column(Integer, default=0)
     end_date: Mapped[int] = mapped_column(BigInteger, default=int(time.time()))
     description: Mapped[str] = mapped_column(String, default="")
     status: Mapped[bool] = mapped_column(Boolean, default=False)
     used_users: Mapped[str] = mapped_column(String, default="")
+    product_id: Mapped[int] = mapped_column(Integer, ForeignKey("products.id"))
+    product_duration: Mapped[int] = mapped_column(Integer, default=0)
 
-    def get_used_users(self, used_users):
+    def set_used_users(self, used_users):
         self.used_users = json.dumps(used_users)
 
-    def set_used_users(self):
+    def get_used_users(self):
         return json.loads(self.used_users) if self.used_users else []
 
 class Product(Base):

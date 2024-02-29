@@ -13,7 +13,7 @@ def main_menu_keyboard(user: User) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
     # 🎭🎁📩💠⚙️🔒🔰
     builder.btn(text="🎭 Реф. Система", callback_data="user_refsystem_menu")
-    builder.btn(text="🎁 Промокоды", callback_data="1")
+    builder.btn(text="🎁 Промокоды", callback_data="user_promocode_menu")
     builder.btn(text="📩 Информация", callback_data="1")
     builder.btn(text="💠 Товары", callback_data="1")
     builder.btn(text="⚙️ Настройки", callback_data="1")
@@ -31,3 +31,16 @@ def referal_menu_keyboard() -> InlineKeyboardMarkup:
     builder.btn(text="⬅️ Назад", callback_data="main_menu")
 
     return builder.build(sizes=(1, 1))
+
+def promocode_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text="❤️‍🔥 Активировать промокод", callback_data="user_activate_promocode")
+    builder.btn(text="⬅️ Назад", callback_data="main_menu")
+
+    return builder.build(sizes=(1, 1))
+
+def activated_promocode_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text="⬅️ Вернуться в меню", callback_data="main_menu")
+
+    return builder.build(sizes=(1,))

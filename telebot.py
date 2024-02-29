@@ -3,7 +3,7 @@ import config
 import threading
 import oc
 from database import database_core
-from routers import callbacks_router, commands_router
+from routers import callbacks_router, commands_router, state_router
 from colorama import Fore as fr
 from aiogram import __api_version__
 from aiogram import Router, Bot, Dispatcher, types
@@ -19,7 +19,10 @@ async def startBot() -> None:
     bot = Bot(config.BOT_TOKEN, parse_mode=ParseMode.HTML)
         
     dp = Dispatcher()
-    dp.include_routers(commands_router.command_router, callbacks_router.callback_router)
+    dp.include_routers(
+        commands_router.command_router, 
+        callbacks_router.callback_router,
+        state_router.state_router)
 
     await bot.delete_webhook(True)
     oc.log("info", "Бот успешно запущен")
