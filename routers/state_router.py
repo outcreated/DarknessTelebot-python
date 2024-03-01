@@ -20,6 +20,8 @@ async def user_activate_promocode(c: CallbackQuery, state: FSMContext):
     await state.set_state(UsePromocodeState.name)
     await c.message.edit_text(text="Введите промокод")
 
+    
+'''
 @state_router.message(UsePromocodeState.name)
 async def activate_promocode(m: Message, state: FSMContext):
     response = await requests_promocode.activate_promocode(m.text, m.from_user.id)
@@ -38,6 +40,30 @@ async def activate_promocode(m: Message, state: FSMContext):
         await m.answer("Данного промокода не существует")
     else:
         await m.answer("Произошла неизвестная ошибка, попробуйте позже или обратитесь к администратору") 
+    
+    print(response[0])
+    await state.clear()
+'''
+
+@state_router.message(UsePromocodeState.name)
+async def activate_promocode(m: Message, state: FSMContext):
+    response = await requests_promocode.activate_promocode(m.text, m.from_user.id)
+    response_message_map = {
+        "PROMOCODE_EXPIRED": "Срок действия данного промокода истек",
+        "PROMOCODE_ALREADY_USED": "Вы уже использовали данный промокод",
+        "PROMOCODE_NOT_FOUND": "Данного промокода не существует",
+        "PROMOCODE_USES_LEFT_0": "Данный промокод исчерпал количество активаций",
+    }
+
+    if response[0] in response_message_map:
+        await m.answer(response_message_map[response[0]],
+                       reply_markup=ikb.activated_promocode_menu_keyboard())
+    elif response[0] == "PROMOCODE_SUCCESS_USED":
+        await m.answer(
+            f"Вы успешно использовали промокод <i>{response[1]}</i> и получили лицензию на продукт <b>{response[2]}</b> до <code>{await timestamp_to_sub_end_date(response[3])}</code>",
+            reply_markup=ikb.activated_promocode_menu_keyboard())
+    else:
+        await m.answer("Произошла неизвестная ошибка, попробуйте позже или обратитесь к администратору")
     
     print(response[0])
     await state.clear()

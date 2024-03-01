@@ -1,12 +1,13 @@
 import config
+import cryptobot
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from routers.commands_router import check_user_channel_subscribed, preRegisterUsers, generate_user_text_profile
-from database import requests_user, requests_promocode, requests_product
-from database.database_core import User, Promocode
+from database import requests_user, requests_promocode, requests_product, requests_sub
+from database.database_core import Product, User, Promocode
 from data import ikb
 
 callback_router = Router()
@@ -44,6 +45,54 @@ async def open_promocode_menu(c: CallbackQuery):
     user = await requests_user.get_user_by_telegram_id(c.from_user.id)
     await c.message.edit_text(text=await generate_promocode_menu_text(user), reply_markup=ikb.promocode_menu_keyboard())
 
+@callback_router.callback_query(F.data == "user_product_menu")
+async def open_product_menu(c: CallbackQuery):
+    products = await requests_product.get_all_products()
+
+    await c.message.edit_text(text=await generate_product_menu_text(), reply_markup=ikb.product_menu_keyboard(products))
+
+@callback_router.callback_query(F.data.startswith("user_product_menu@"))
+async def open_product_menu_by_id(c: CallbackQuery):
+    product = await requests_product.get_product_by_id(int(c.data.split("@")[1]))
+    product_subs = await requests_sub.get_product_subscriptions_patterns(product.id)
+    await c.message.edit_text(
+        text=await generate_current_product_menu_text(product), 
+        reply_markup=ikb.current_product_menu_keyboard(product_subs))
+    
+@callback_router.callback_query(F.data.startswith("user_buy_subscription@"))
+async def user_buy_subscription(c: CallbackQuery):
+    subscription_id = int(c.data.split("@")[1])
+    subscription = await requests_sub.get_subscription_by_id(subscription_id)
+
+    url = await cryptobot.create_invoice(subscription.cost, c.from_user.id, subscription.id)
+    await c.message.edit_text(await generate_buy_subscription_text(),
+                              reply_markup=ikb.crypto_bot_pay_keyboard(url))
+    
+@callback_router.callback_query(F.data == "update_invoice_status")
+async def update_invoice_status(c: CallbackQuery):
+    status = await cryptobot.update_invoice(c.from_user.id)
+
+    if status[0] == "active":
+        await c.answer("❌ Счет не оплачен", cache_time=5)
+    elif status[0] == "paid":
+        await c.answer("✅ Оплата прошла успешно!")
+        await cryptobot.delete_invoice(c.from_user.id)
+        user = await requests_user.get_user_by_telegram_id(c.from_user.id)
+        subscription = await requests_sub.get_subscription_by_id(status[1])
+        await requests_user.add_referrer_balance(user, subscription.cost)
+        await requests_sub.add_subscription_to_user(status[1], c.from_user.id)
+        await c.message.edit_text(text=await generate_user_text_profile(user), 
+                                  reply_markup=ikb.main_menu_keyboard(user))
+        
+@callback_router.callback_query(F.data == "user_cancel_buy_subscription")
+async def user_cancel_buy_subscription(c: CallbackQuery):
+    user = await requests_user.get_user_by_telegram_id(c.from_user.id)
+    await cryptobot.delete_invoice(c.from_user.id)
+    await c.answer("❌ Оплата отменена", cache_time=5)
+    await c.message.edit_text(text=await generate_user_text_profile(user), 
+                              reply_markup=ikb.main_menu_keyboard(user))
+
+
 async def generate_refsystem_menu_text(user: User) -> str:
     text = f"""
     ► [ 🎁 Реферальная система ]
@@ -79,3 +128,30 @@ async def generate_promocode_menu_text(user: User) -> str:
         text += f"\n    ► <i>#{promocode.name}</i> - <b>{product.name}</b> на <code>{promocode.product_duration/3600}</code><b> час(ов)</b>"
 
     return text
+
+async def generate_product_menu_text() -> str:
+    return """► [ 💠 Товары ]
+        ➖➖➖➖➖➖➖➖➖➖    
+        B данном разделе вы можете приобрести или продлить подписку для различных продуктов
+    """
+
+async def generate_current_product_menu_text(product: Product) -> str:
+    text = f"""► [ 🔑 Меню товара ]
+        ➖➖➖➖➖➖➖➖➖➖    
+        Название товара: <code>{product.name}</code>
+        Описание товара: <code>{product.description}</code>
+        Версия: <code>{product.version}</code>
+        ➖➖➖➖➖➖➖➖➖➖    
+
+► [ 📩 Информация ]
+        ➖➖➖➖➖➖➖➖➖➖
+        ► <strong>При нажатии на кнопки ниже автоматически будет создан счет в <i>Crypto Bot</i></strong> 
+        ► <strong>Чтобы приобрести продукт оплатите счет</strong>               
+    """
+
+    return text
+
+async def generate_buy_subscription_text() -> str:
+    return "Для того, чтобы купить данный продукт оплатите счет в <i>CryptoBot</i>\n " \
+           "У вас есть 5 минут на оплату, после чего счет <strong>перестанет существовать</strong> и при попытке его "\
+           "пополнить вы потеряете деньги и не получите ничего\n\n<strong>Рекомендуем</strong> указывать свой <i>Telegram ID</i> в коментарии к платежу"

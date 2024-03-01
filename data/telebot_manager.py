@@ -20,11 +20,10 @@ class KeyboardBuilder:
                                           url=url)
         self.buttons.append(button)
         return self
-
+    
     def build(self,
-              sizes: Optional[tuple[int]] = (2,),
+              sizes: Optional[tuple[int]] = (3,),
               repeat: Optional[bool] = False):
         for button in self.buttons:
             self.keyboard.add(button)
-
         return self.keyboard.adjust(*sizes, repeat=repeat).as_markup()

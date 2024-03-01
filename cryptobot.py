@@ -18,17 +18,21 @@ async def invoice_paid(update: Update, app) -> None:
     print(update)
 
 
-async def create_invoice(cost: str, telegram_id: int):
-    fiat_invoice = await crypto.create_invoice(amount=int(cost), fiat='USD', currency_type='fiat')
-    invoices_list[f"{telegram_id}"] = fiat_invoice.invoice_id
+async def create_invoice(cost: str, telegram_id: int, subscription_id: int):
+    fiat_invoice = await crypto.create_invoice(amount=cost, fiat='USD', currency_type='fiat')
+    invoices_list[telegram_id] = [fiat_invoice.invoice_id, subscription_id]
+    #invoices_list[f"{telegram_id}"] = fiat_invoice.invoice_id
     return fiat_invoice.bot_invoice_url
 
 
-async def update_invoice(telegram_id):
-    old_invoice = await crypto.get_invoices(invoice_ids=invoices_list[str(telegram_id)])
+async def update_invoice(telegram_id) -> tuple[str, int]:
+    old_invoice = await crypto.get_invoices(invoice_ids=invoices_list[telegram_id][0])
     for index, value in enumerate(old_invoice):
         if index == 1:
-            return value[1]
+            return (value[1], invoices_list[telegram_id][1])
+
+async def delete_invoice(telegram_id) -> None:
+    del invoices_list[telegram_id]
 
 
 async def init():
