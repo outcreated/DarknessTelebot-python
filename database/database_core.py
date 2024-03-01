@@ -91,6 +91,27 @@ class UserSubscription(Base):
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.id'))
     product: Mapped[Product] = relationship(Product)
 
+class UserWithdrawMoney(Base):
+    __tablename__ = "user_withdraw_money"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    telegram_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.telegram_id'))
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    date: Mapped[int] = mapped_column(BigInteger, default=int(time.time()))
+
+class PaidInvoice(Base):
+    __tablename__ = "paid_invoices"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    telegram_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.telegram_id'))
+    date: Mapped[int] = mapped_column(BigInteger, default=int(time.time()))
+    invoice_info: Mapped[str] = mapped_column(String, default="")
+
+    def set_invoice_info(self, invoice_info):
+        self.invoice_info = json.dumps(invoice_info)
+
+    def get_invoice_info(self):
+        return json.loads(self.invoice_info) if self.invoice_info else []
+
+
 async def init_database():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

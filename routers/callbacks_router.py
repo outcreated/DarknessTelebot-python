@@ -3,8 +3,6 @@ import cryptobot
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 from routers.commands_router import check_user_channel_subscribed, preRegisterUsers, generate_user_text_profile
 from database import requests_user, requests_promocode, requests_product, requests_sub
 from database.database_core import Product, User, Promocode
@@ -91,7 +89,26 @@ async def user_cancel_buy_subscription(c: CallbackQuery):
     await c.answer("❌ Оплата отменена", cache_time=5)
     await c.message.edit_text(text=await generate_user_text_profile(user), 
                               reply_markup=ikb.main_menu_keyboard(user))
+    
+@callback_router.callback_query(F.data == "user_ref_withdraw_money")
+async def user_ref_withdraw_money(c: CallbackQuery):
+    user = await requests_user.get_user_by_telegram_id(c.from_user.id)
+    if user.balance <= 5.0:
+        await c.answer("\t\tНедостаточно средств\n\nМинимальная сумма для вывода: 5.0 $",
+                       show_alert=True)
+        return
+    status = await requests_user.create_withdraw(c.from_user.id)
 
+    if not status:
+        await c.answer("❌ У вас уже есть активная заявка на вывод, ожидайте",
+                       show_alert=True)
+    else:
+        await c.answer("✅ Вы успешно отправили заявку на вывод!\n\nОжидайте ответ от администратора",
+                       show_alert=True)
+        
+@callback_router.callback_query(F.data == "user_settings_menu")
+async def user_settings_menu(c: CallbackQuery):
+    await c.message.edit_text(text="Настройки. Все", reply_markup=ikb.settings_menu_keyboard())
 
 async def generate_refsystem_menu_text(user: User) -> str:
     text = f"""

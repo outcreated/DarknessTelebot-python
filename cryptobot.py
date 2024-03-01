@@ -6,6 +6,7 @@ from aiogram.client.session import aiohttp
 from aiocryptopay.models.update import Update
 from colorama import Fore
 from aiocryptopay.models.invoice import Invoice
+from database import requests_server
 
 invoices_list = {}
 
@@ -27,8 +28,15 @@ async def create_invoice(cost: str, telegram_id: int, subscription_id: int):
 
 async def update_invoice(telegram_id) -> tuple[str, int]:
     old_invoice = await crypto.get_invoices(invoice_ids=invoices_list[telegram_id][0])
+    invoice_info = []
+
+    for index, value in enumerate(old_invoice):
+        if index in [0,1,2,4,6]:
+            invoice_info.append(value)
     for index, value in enumerate(old_invoice):
         if index == 1:
+            if value[1] == "paid":
+                await requests_server.save_paid_invoice(telegram_id, invoice_info)
             return (value[1], invoices_list[telegram_id][1])
 
 async def delete_invoice(telegram_id) -> None:

@@ -16,7 +16,7 @@ def main_menu_keyboard(user: User) -> InlineKeyboardMarkup:
     builder.btn(text="🎁 Промокоды", callback_data="user_promocode_menu")
     builder.btn(text="📩 Информация", callback_data="1")
     builder.btn(text="💠 Товары", callback_data="user_product_menu")
-    builder.btn(text="⚙️ Настройки", callback_data="1")
+    builder.btn(text="⚙️ Настройки", callback_data="user_settings_menu")
     if user.isAdmin:
         builder.btn(text="🔒 Админ-панель", callback_data="1")
     builder.btn(text="🔰 Помощь", callback_data="1")
@@ -78,3 +78,14 @@ def crypto_bot_pay_keyboard(url: str) -> InlineKeyboardMarkup:
     
 
     return builder.build(sizes=(2, 1))
+
+def settings_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text=f"✅ Новые рефералы", callback_data="setting_new_ref")
+    builder.btn(text=f"✅ Покупка реферала", callback_data="setting_ref_buy")
+    builder.btn(text=f"✅ Оповещения от администрации", callback_data="setting_admin_alerts")
+    builder.btn(text=f"✅ Напоминания о подписках", callback_data="setting_subscriptions")
+    builder.btn(text="⬅️ Назад", callback_data="main_menu")
+    builder.btn(text="🚫 Выключить все", callback_data="setting_off_all")
+
+    return builder.build(sizes=(1, 1, 1, 1, 2))
