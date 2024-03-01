@@ -65,7 +65,6 @@ async def activate_promocode(m: Message, state: FSMContext):
     else:
         await m.answer("Произошла неизвестная ошибка, попробуйте позже или обратитесь к администратору")
     
-    print(response[0])
     await state.clear()
 
 async def timestamp_to_sub_end_date(timestamp: int) -> str:

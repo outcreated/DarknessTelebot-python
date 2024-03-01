@@ -2,11 +2,14 @@ import telebot, asyncio, logging, sys, threading, oc, platform, os
 
 from colorama import Fore as fr
 from colorama import init as colorama_init
+from server import authorization_service
+
 
 colorama_init()
 
 def init() -> None:
     oc.cls()
+    authorization_service.init_auth_server()
     logging.basicConfig(level=logging.INFO,
                         stream=sys.stdout,
                         format=oc.get_timestamp() +

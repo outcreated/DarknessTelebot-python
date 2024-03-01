@@ -84,7 +84,7 @@ async def activate_promocode(promocode_name: str, telegram_id) -> tuple:
                         )
                     session.add(subcription)
                 else:
-                    subcription.end_date += promocode.product_duration
+                    subcription.end_date = int(time.time()) + ((subcription.end_date - int(time.time())) + promocode.product_duration)
                     await session.merge(subcription)
 
                 dur = subcription.end_date

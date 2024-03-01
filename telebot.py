@@ -2,7 +2,7 @@ import asyncio
 import config
 import threading
 import oc
-from server import product_manager
+from server import product_manager, authorization_service
 from database import database_core
 from routers import callbacks_router, commands_router, state_router
 from colorama import Fore as fr
