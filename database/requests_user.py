@@ -24,10 +24,11 @@ async def add_user(telegram_id: int, username: str, referrer_id: int) -> bool:
 async def add_referrer_balance(user: User, sum: float) -> None:
     async with async_session() as s:
         user = await s.scalar(select(User).where(User.telegram_id == user.referrer_id))
-        user.balance = round((user.balance + (sum / user.ref_percentage)), 2)
-        user.total_balance = round((user.total_balance + (sum / user.ref_percentage)), 2)
-        await s.merge(user)
-        await s.commit()
+        if user:
+            user.balance = round((user.balance + (sum / user.ref_percentage)), 2)
+            user.total_balance = round((user.total_balance + (sum / user.ref_percentage)), 2)
+            await s.merge(user)
+            await s.commit()
     
 async def get_all_users() -> tuple[User]:
     async with async_session() as s:

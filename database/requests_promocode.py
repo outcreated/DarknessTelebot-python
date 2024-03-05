@@ -15,6 +15,10 @@ time_multipliers = {
 async def get_promocode_by_id(promocode_id: int) -> Promocode:
     async with async_session() as session:
         return await session.scalar(select(Promocode).where(Promocode.id == promocode_id))
+    
+async def get_promocode_by_name(promocode_name: str) -> Promocode:
+    async with async_session() as session:
+        return await session.scalar(select(Promocode).where(Promocode.name == promocode_name))
 
 async def add_promocode(
         promocode_name: str, 

@@ -1,6 +1,4 @@
-from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.types import InlineKeyboardMarkup
-from aiogram.types import WebAppInfo
 from data.telebot_manager import KeyboardBuilder
 from database.database_core import Product, SubscriptionPattern, User
 from database import requests_sub, requests_product
@@ -19,7 +17,7 @@ def main_menu_keyboard(user: User) -> InlineKeyboardMarkup:
     builder.btn(text="💠 Товары", callback_data="user_product_menu")
     builder.btn(text="⚙️ Настройки", callback_data="user_settings_menu")
     if user.isAdmin:
-        builder.btn(text="🔒 Админ-панель", callback_data="test")
+        builder.btn(text="🔒 Админ-панель", callback_data="admin_apanel_menu")
     builder.btn(text="🔰 Помощь", callback_data="open_darkness_manager", url="https://t.me/darknessmanager")
     if user.isAdmin:
         return builder.build(sizes=(2, 2, 1, 1, 1))
@@ -113,3 +111,63 @@ async def generate_product_info_menu_keyboard(product: Product) -> InlineKeyboar
     builder.btn(text="⬅️ Назад", callback_data="main_menu")
 
     return builder.build(sizes=(2, 1))
+
+def apanel_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text=f"🎭 Реф. система", callback_data="admin_refsystem_menu")
+    builder.btn(text=f"💠 Товары", callback_data="admin_product_menu")
+
+    builder.btn(text=f"🎁 Промокоды", callback_data="admin_promocode_menu")
+    builder.btn(text=f"🤖 Бот", callback_data="admin_")
+
+    builder.btn(text=f"📝 Скачать логи", callback_data="admin_")
+    builder.btn(text=f"🔔 Отправить рассылку", callback_data="admin_")
+
+    builder.btn(text=f"🧩 Управление пользователями", callback_data="admin_")
+
+    builder.btn(text="⬅️ Назад", callback_data="main_menu")
+
+    return builder.build(sizes=(2,2,2,1,1))
+
+def admin_refsystem_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+
+    builder.btn(text="Изменить общий процент", callback_data="*")
+    builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
+
+    return builder.build(sizes=(1, 1))
+
+def admin_product_menu_keyboard(products: tuple[Product]) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    for product in products:
+        builder.btn(text=product.name, callback_data=f"admin_edit_product_menu@{product.id}")
+
+    builder.keyboard.adjust(3, True)
+
+    builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
+    return builder.build()
+
+def admin_edit_product_menu_keyboard(product: Product) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+
+    builder.btn(text="Название", callback_data=f"admin_edit_product:name@{product.id}")
+    builder.btn(text="Описание", callback_data=f"admin_edit_product:description@{product.id}")
+    builder.btn(text="Версия", callback_data=f"admin_edit_product:version@{product.id}")
+    builder.btn(text="Мануал", callback_data=f"admin_edit_product:manual@{product.id}")
+    builder.btn(text="Варианты подписок", callback_data=f"admin_edit_product:subs@{product.id}")
+    builder.btn(text="Состояние", callback_data=f"admin_edit_product:state@{product.id}")
+
+    builder.btn(text="⬅️ Назад", callback_data="admin_product_menu")
+
+    return builder.build(sizes=(2,2,1,1,1))
+
+def admin_promocode_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+
+    builder.btn(text="⚙️ Создать промокод", callback_data="a_create_promocode")
+    builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
+
+    return builder.build(sizes=(1, 1))
+
+
+

@@ -1,4 +1,5 @@
 import datetime
+from opcode import stack_effect
 import time
 
 from aiogram import Router, F
@@ -15,35 +16,76 @@ state_router = Router()
 class UsePromocodeState(StatesGroup):
     name = State()
 
+class CreatePromocode(StatesGroup):
+    promo_name = State()
+    promo_uses = State()
+    promo_duration = State()
+    promo_end_date = State()
+    product_id = State()
+    message_id = 0
+    
+
+@state_router.callback_query(F.data == "a_create_promocode")
+async def create_promocode(c: CallbackQuery, state: FSMContext):
+    await state.set_state(CreatePromocode.promo_name)
+    await c.message.edit_text(text="Введите название промокода")
+    await state.update_data(message_id=c.message.message_id)
+
+    
+
+@state_router.message(CreatePromocode.promo_name)
+async def create_promocode_name(m: Message, state: FSMContext):
+    data = await state.get_data()
+    promo = await requests_promocode.get_promocode_by_name(m.text)
+
+    if promo:
+        if promo.status:
+            await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id, text="Такой промокод уже существует. Измените название промокода")
+        else:
+            await state.update_data(promo_name=m.text)
+            await state.set_state(CreatePromocode.promo_uses)
+    else:
+        await state.update_data(promo_name=m.text)
+        await state.set_state(CreatePromocode.promo_uses)
+
+@state_router.message(CreatePromocode.promo_uses)
+async def create_promo_uses(m: Message, state: FSMContext):
+    data = await state.get_data()
+    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите количество использований для промокода")
+    await state.update_data(promo_uses=m.text)
+    await state.set_state(CreatePromocode.promo_duration)
+    await m.bot.delete_message(m.chat.id, m.message_id)
+
+@state_router.message(CreatePromocode.promo_duration)
+async def create_promo_duration(m: Message, state: FSMContext):
+    data = await state.get_data()
+    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите время, на которое промокод будет выдавать продукт\n\n1 час - 1h\n1 день - 1d\n1 месяц - 1m")
+    await state.update_data(promo_duration=m.text)
+    await state.set_state(CreatePromocode.promo_end_date)
+    await m.bot.delete_message(m.chat.id, m.message_id)
+
+@state_router.message(CreatePromocode.promo_end_date)
+async def create_promo_end_date(m: Message, state: FSMContext):
+    data = await state.get_data()
+    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите время действия промокода\n\n1 час - 1h\n1 день - 1d\n1 месяц - 1m")
+    await state.update_data(promo_end_date=m.text)
+    await state.set_state(CreatePromocode.product_id)
+    await m.bot.delete_message(m.chat.id, m.message_id)
+
+@state_router.message(CreatePromocode.promo_duration)
+async def create_promo_end_date(m: Message, state: FSMContext):
+    data = await state.get_data()
+    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Выберите продукт, для которого хотите создать промокод")
+    await state.update_data(promo_end_date=m.text)
+    await state.clear()
+    await m.bot.delete_message(m.chat.id, m.message_id)
+
+
+
 @state_router.callback_query(F.data == "user_activate_promocode")
 async def user_activate_promocode(c: CallbackQuery, state: FSMContext):
     await state.set_state(UsePromocodeState.name)
     await c.message.edit_text(text="Введите промокод")
-
-    
-'''
-@state_router.message(UsePromocodeState.name)
-async def activate_promocode(m: Message, state: FSMContext):
-    response = await requests_promocode.activate_promocode(m.text, m.from_user.id)
-
-    if response[0] == "PROMOCODE_EXPIRED":
-        await m.answer("Срок действия данного промокода истек")
-    elif response[0] == "PROMOCODE_ALREADY_USED":
-        await m.answer("Вы уже использовали данный промокод")
-    elif response[0] == "PROMOCODE_SUCCESS_USED":
-        await m.answer(
-            f"Вы успешно использовали промокод <i>{response[1]}</i> и получили лицензию на продукт <b>{response[2]}</b> до <code>{await timestamp_to_sub_end_date(response[3])}</code> ",
-            reply_markup=ikb.activated_promocode_menu_keyboard())
-    elif response[0] == "PROMOCODE_USES_LEFT_0":
-        await m.answer("Данный промокод исчерпал количество активаций")
-    elif response[0] == "PROMOCODE_NOT_FOUND":
-        await m.answer("Данного промокода не существует")
-    else:
-        await m.answer("Произошла неизвестная ошибка, попробуйте позже или обратитесь к администратору") 
-    
-    print(response[0])
-    await state.clear()
-'''
 
 @state_router.message(UsePromocodeState.name)
 async def activate_promocode(m: Message, state: FSMContext):

@@ -28,5 +28,5 @@ def install_dependencies():
     os.system(command)
 
 if __name__ == '__main__':
-    install_dependencies()
+    #install_dependencies()
     init()

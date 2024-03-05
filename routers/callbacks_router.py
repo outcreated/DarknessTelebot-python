@@ -6,6 +6,8 @@ import datetime
 import asyncio
 
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, FSInputFile
 from routers.commands_router import check_user_channel_subscribed, preRegisterUsers, generate_user_text_profile
 from database import requests_user, requests_promocode, requests_product, requests_sub
@@ -14,8 +16,15 @@ from data import ikb
 
 callback_router = Router()
 
-# ---------------------------------------------------
-# ---------------------------------------------------
+class CreatePromocode(StatesGroup):
+    promo_name = State()
+    promo_uses = State()
+    product_id = State()
+    promo_duration = State()
+
+#================================================================
+#=====================USER=======================================
+#================================================================
 
 @callback_router.callback_query(F.data == "check_preregister_subscribed")
 async def register_of_button(c: CallbackQuery):
@@ -244,3 +253,89 @@ async def generate_product_info_menu_text(product: Product) -> str:
 async def timestamp_to_sub_end_date(timestamp: int) -> str:
     current_datetime = datetime.datetime.fromtimestamp(timestamp)
     return current_datetime.strftime('%d-%m-%Y | %H:%M:%S')
+
+#================================================================
+#=====================ADMIN======================================
+#================================================================
+
+@callback_router.callback_query(F.data.startswith("admin_"))
+async def admin_callback(c: CallbackQuery):
+    user = await requests_user.get_user_by_telegram_id(c.from_user.id)
+
+    if not user.isAdmin:
+        await c.answer("❌ Нет доступа", show_alert=True)
+        return
+    
+    callback_name = c.data.split("admin_")[1]
+
+    match callback_name:
+        case "apanel_menu":
+            await apanel_menu(c)
+        case "refsystem_menu":
+            await admin_refsytem_menu(c)
+        case "product_menu":
+            await admin_product_menu(c)
+        case "promocode_menu":
+            await admin_promocode_menu(c)
+        case _ if callback_name.startswith("edit_product_menu@"):
+            product_id = int(callback_name.split("@")[1])
+            await admin_edit_product_menu(c, product_id)
+        case _ if callback_name.startswith("admin_edit_product:"):
+            edit_type = str(callback_name.split(":")[1]).split("@")[0]
+            product_id = str(callback_name.split(":")[1]).split("@")[1]
+
+            await admin_edit_product(c, edit_type, product_id)
+        case _:
+            await c.answer(text="❌ Недопустимый параметр", show_alert=True)
+
+async def apanel_menu(c: CallbackQuery) -> None:
+    await c.message.edit_text(text="Админ панель", 
+                              reply_markup=ikb.apanel_menu_keyboard())
+
+async def admin_refsytem_menu(c: CallbackQuery) -> None:
+    await c.message.edit_text(text=await generate_admin_refsystem_menu_text(), 
+                              reply_markup=ikb.admin_refsystem_menu_keyboard())
+    
+async def admin_product_menu(c: CallbackQuery) -> None:
+    products = await requests_product.get_all_products()
+    await c.message.edit_text(text="Меню продуктов",
+                              reply_markup=ikb.admin_product_menu_keyboard(products))
+
+async def admin_edit_product_menu(c: CallbackQuery, product_id: int) -> None:
+    product = await requests_product.get_product_by_id(product_id)
+
+    await c.message.edit_text(text=await generate_admin_edit_product_menu_text(product), 
+                              reply_markup=ikb.admin_edit_product_menu_keyboard(product))
+    
+async def admin_edit_product(c: CallbackQuery, edit_type: str, product_id: str) -> None:
+    # TODO: добавить проверку на то, что такой параметр и реализацию для него
+    match edit_type:
+        case "name":
+            pass
+        case "description":
+            pass
+        case "manual":
+            pass
+        case "version":
+            pass
+        case "subs":
+            pass
+        case "state":
+            pass
+        case _:
+            await c.answer(text="❌ Недопустимый параметр", show_alert=True)
+
+async def admin_promocode_menu(c: CallbackQuery) -> None:
+    await c.message.edit_text(text="Промокоды", reply_markup=ikb.admin_promocode_menu_keyboard())
+
+#================================================================
+    
+async def generate_admin_edit_product_menu_text(product: Product) -> str:
+    text = f"► [ 🔑 {product.name} ]\n\t"
+    return text
+    
+async def generate_admin_refsystem_menu_text() -> str:
+    text = "Реф. система\n\n\tТекущий общий процент: <code>10%</code>"
+    return text
+
+#================================================================
