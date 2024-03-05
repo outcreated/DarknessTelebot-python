@@ -3,6 +3,7 @@ from aiogram.types import InlineKeyboardMarkup
 from aiogram.types import WebAppInfo
 from data.telebot_manager import KeyboardBuilder
 from database.database_core import Product, SubscriptionPattern, User
+from database import requests_sub, requests_product
 
 def check_preregister_subscribed() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -14,12 +15,12 @@ def main_menu_keyboard(user: User) -> InlineKeyboardMarkup:
     # 🎭🎁📩💠⚙️🔒🔰
     builder.btn(text="🎭 Реф. Система", callback_data="user_refsystem_menu")
     builder.btn(text="🎁 Промокоды", callback_data="user_promocode_menu")
-    builder.btn(text="📩 Информация", callback_data="1")
+    builder.btn(text="🔑 Подписки", callback_data="user_subscriptions_menu")
     builder.btn(text="💠 Товары", callback_data="user_product_menu")
     builder.btn(text="⚙️ Настройки", callback_data="user_settings_menu")
     if user.isAdmin:
-        builder.btn(text="🔒 Админ-панель", callback_data="1")
-    builder.btn(text="🔰 Помощь", callback_data="1")
+        builder.btn(text="🔒 Админ-панель", callback_data="test")
+    builder.btn(text="🔰 Помощь", callback_data="open_darkness_manager", url="https://t.me/darknessmanager")
     if user.isAdmin:
         return builder.build(sizes=(2, 2, 1, 1, 1))
     else:
@@ -89,3 +90,26 @@ def settings_menu_keyboard() -> InlineKeyboardMarkup:
     builder.btn(text="🚫 Выключить все", callback_data="setting_off_all")
 
     return builder.build(sizes=(1, 1, 1, 1, 2))
+
+async def subscriptions_menu_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    
+    subscriptions = await requests_sub.get_user_subscriptions(telegram_id=telegram_id)
+
+    for subscription in subscriptions:
+        product = await requests_product.get_product_by_id(subscription.product_id)
+        builder.btn(f"{product.name}", f"user_info_product@{product.id}")
+        builder.keyboard.adjust(3, True)
+
+    builder.btn(text="⬅️ Назад", callback_data="main_menu")
+
+    return builder.build()
+
+async def generate_product_info_menu_keyboard(product: Product) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+
+    builder.btn(text="📚 Мануал", callback_data=f"*", url=product.manual_url)
+    builder.btn(text="🧩 Скачать", callback_data=f"download_product@{product.id}")
+    builder.btn(text="⬅️ Назад", callback_data="main_menu")
+
+    return builder.build(sizes=(2, 1))

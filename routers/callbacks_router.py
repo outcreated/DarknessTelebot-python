@@ -1,14 +1,21 @@
+import threading
+import time
 import config
 import cryptobot
+import datetime
+import asyncio
 
 from aiogram import Router, F
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, FSInputFile
 from routers.commands_router import check_user_channel_subscribed, preRegisterUsers, generate_user_text_profile
 from database import requests_user, requests_promocode, requests_product, requests_sub
 from database.database_core import Product, User, Promocode
 from data import ikb
 
 callback_router = Router()
+
+# ---------------------------------------------------
+# ---------------------------------------------------
 
 @callback_router.callback_query(F.data == "check_preregister_subscribed")
 async def register_of_button(c: CallbackQuery):
@@ -48,6 +55,25 @@ async def open_product_menu(c: CallbackQuery):
     products = await requests_product.get_all_products()
 
     await c.message.edit_text(text=await generate_product_menu_text(), reply_markup=ikb.product_menu_keyboard(products))
+
+@callback_router.callback_query(F.data == "user_settings_menu")
+async def user_settings_menu(c: CallbackQuery):
+    await c.message.edit_text(text="Настройки. Все", reply_markup=ikb.settings_menu_keyboard())
+
+@callback_router.callback_query(F.data == "user_subscriptions_menu")
+async def user_subscriptions_menu(c: CallbackQuery):
+    await c.message.edit_text(
+        text=await generate_subscriptions_menu_text(c.from_user.id), 
+        reply_markup=await ikb.subscriptions_menu_keyboard(c.from_user.id))
+
+@callback_router.callback_query(F.data.startswith("user_info_product@"))
+async def user_info_product(c: CallbackQuery):
+    product = await requests_product.get_product_by_id(int(c.data.split("@")[1]))
+    await c.message.edit_text(text=await generate_product_info_menu_text(product),
+                              reply_markup=await ikb.generate_product_info_menu_keyboard(product))
+
+# ---------------------------------------------------
+# ---------------------------------------------------
 
 @callback_router.callback_query(F.data.startswith("user_product_menu@"))
 async def open_product_menu_by_id(c: CallbackQuery):
@@ -90,6 +116,17 @@ async def user_cancel_buy_subscription(c: CallbackQuery):
     await c.message.edit_text(text=await generate_user_text_profile(user), 
                               reply_markup=ikb.main_menu_keyboard(user))
     
+@callback_router.callback_query(F.data.startswith("download_product@"))
+async def download_product(c: CallbackQuery):
+    product_id = int(c.data.split("@")[1])
+    file_path = f'downloads/{product_id}.txt'  # Укажите путь к вашему файлу
+    await c.message.answer_document(caption="Приятного использования", 
+                                    document=FSInputFile(path=file_path))
+
+    
+# ---------------------------------------------------
+# ---------------------------------------------------
+    
 @callback_router.callback_query(F.data == "user_ref_withdraw_money")
 async def user_ref_withdraw_money(c: CallbackQuery):
     user = await requests_user.get_user_by_telegram_id(c.from_user.id)
@@ -105,11 +142,8 @@ async def user_ref_withdraw_money(c: CallbackQuery):
     else:
         await c.answer("✅ Вы успешно отправили заявку на вывод!\n\nОжидайте ответ от администратора",
                        show_alert=True)
+    
         
-@callback_router.callback_query(F.data == "user_settings_menu")
-async def user_settings_menu(c: CallbackQuery):
-    await c.message.edit_text(text="Настройки. Все", reply_markup=ikb.settings_menu_keyboard())
-
 async def generate_refsystem_menu_text(user: User) -> str:
     text = f"""
     ► [ 🎁 Реферальная система ]
@@ -122,7 +156,7 @@ async def generate_refsystem_menu_text(user: User) -> str:
         ➖➖➖➖➖➖➖➖➖➖
 ► [ 📩 Информация ]
         ➖➖➖➖➖➖➖➖➖➖
-        ► <strong>B данном разделе вы можете посмотреть свою историю активированных промокодов и активировать промокод</strong>
+        ► <strong>Реферальная система</strong>
     """
 
     return text
@@ -138,6 +172,7 @@ async def generate_promocode_menu_text(user: User) -> str:
         ► <i><b>Пусто</b></i>
         """
         return text
+    
     
     for i in range(len(promocodes_id)):
         promocode = await requests_promocode.get_promocode_by_id(promocodes_id[i])
@@ -156,10 +191,11 @@ async def generate_current_product_menu_text(product: Product) -> str:
     text = f"""► [ 🔑 Меню товара ]
         ➖➖➖➖➖➖➖➖➖➖    
         Название товара: <code>{product.name}</code>
-        Описание товара: <code>{product.description}</code>
+        Описание товара: {product.description}
         Версия: <code>{product.version}</code>
         ➖➖➖➖➖➖➖➖➖➖    
-
+            """
+    text += """
 ► [ 📩 Информация ]
         ➖➖➖➖➖➖➖➖➖➖
         ► <strong>При нажатии на кнопки ниже автоматически будет создан счет в <i>Crypto Bot</i></strong> 
@@ -172,3 +208,39 @@ async def generate_buy_subscription_text() -> str:
     return "Для того, чтобы купить данный продукт оплатите счет в <i>CryptoBot</i>\n " \
            "У вас есть 5 минут на оплату, после чего счет <strong>перестанет существовать</strong> и при попытке его "\
            "пополнить вы потеряете деньги и не получите ничего\n\n<strong>Рекомендуем</strong> указывать свой <i>Telegram ID</i> в коментарии к платежу"
+
+async def generate_subscriptions_menu_text(telegram_id: int) -> str:
+    text = "► [ 🔑 Подписки ]\n\t➖➖➖➖➖➖➖➖➖➖"
+
+    subs = await requests_sub.get_user_subscriptions(telegram_id)
+    count = 0
+    for sub in subs:
+        count += 1
+        product = await requests_product.get_product_by_id(sub.product_id)
+        text += f"""
+► [ 🔑 {product.name} ]
+    ► Статус > Активна
+    ► Дата покупки > <code>{await timestamp_to_sub_end_date(sub.start_date)}</code>
+    ► Дата окончания > <code>{await timestamp_to_sub_end_date(sub.end_date)}</code>
+    ➖➖➖➖➖➖➖➖➖➖
+                    """
+        
+    if count < 1:
+        text += f"""
+        ► <i><b>У вас нет активных подписок 😕</b></i>
+        """
+        return text
+
+    return text
+
+async def generate_product_info_menu_text(product: Product) -> str:
+    text = f"► [ 🔑 {product.name} ]\n\t➖➖➖➖➖➖➖➖➖➖\n\n"
+
+    text += product.description
+
+    return text
+
+
+async def timestamp_to_sub_end_date(timestamp: int) -> str:
+    current_datetime = datetime.datetime.fromtimestamp(timestamp)
+    return current_datetime.strftime('%d-%m-%Y | %H:%M:%S')

@@ -67,6 +67,8 @@ class Product(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     name: Mapped[str] = mapped_column(String, default="")
     description: Mapped[str] = mapped_column(String, default="")
+    manual_url: Mapped[str] = mapped_column(String, default="https://www.google.com")
+    file: Mapped[str] = mapped_column(String, default="files/test.rar")
     version: Mapped[str] = mapped_column(String, default="1.0.0")
     active: Mapped[bool] = mapped_column(Boolean, default=False)
 
