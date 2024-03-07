@@ -258,6 +258,9 @@ async def timestamp_to_sub_end_date(timestamp: int) -> str:
 #=====================ADMIN======================================
 #================================================================
 
+
+ 
+
 @callback_router.callback_query(F.data.startswith("admin_"))
 async def admin_callback(c: CallbackQuery):
     user = await requests_user.get_user_by_telegram_id(c.from_user.id)
@@ -327,6 +330,29 @@ async def admin_edit_product(c: CallbackQuery, edit_type: str, product_id: str) 
 
 async def admin_promocode_menu(c: CallbackQuery) -> None:
     await c.message.edit_text(text="Промокоды", reply_markup=ikb.admin_promocode_menu_keyboard())
+
+
+@callback_router.callback_query(F.data.startswith("create_promocode_apanel?"))
+async def create_promocode_apanel(c: CallbackQuery):
+    creation_code = c.data.split("?")[1]
+
+    product_id = creation_code.split("&")[0]
+    promo_name = creation_code.split("&")[1]
+    promo_uses = creation_code.split("&")[2]
+    promo_duration = creation_code.split("&")[3]
+    promo_end = creation_code.split("&")[4]
+
+    try:
+        result = await requests_promocode.add_promocode(promo_name, promo_uses, promo_end, product_id, promo_duration)
+
+        if not result:
+            await c.message.edit_text(text="Произошла неизвестная ошибка при создании промокода. Промокод не создан",
+                reply_markup=ikb.back_to_main_menu_keyboard())
+        else:
+            await c.message.edit_text(text=f"Промокод с названием #{promo_name} успешно создан! Осталось активаций: <strong>{promo_uses}</strong>",
+                reply_markup=ikb.back_to_main_menu_keyboard())
+    except Exception as e:
+        await c.message.edit_text(text=f"Произошла внутренняя ошибка: \n\n\n{e}", reply_markup=ikb.back_to_main_menu_keyboard())
 
 #================================================================
     

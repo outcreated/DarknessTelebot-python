@@ -44,14 +44,18 @@ async def create_promocode_name(m: Message, state: FSMContext):
         else:
             await state.update_data(promo_name=m.text)
             await state.set_state(CreatePromocode.promo_uses)
+            await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите количество использований для промокода")
+            await m.bot.delete_message(m.chat.id, m.message_id)
     else:
         await state.update_data(promo_name=m.text)
         await state.set_state(CreatePromocode.promo_uses)
+        await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите количество использований для промокода")
+        await m.bot.delete_message(m.chat.id, m.message_id)
 
 @state_router.message(CreatePromocode.promo_uses)
 async def create_promo_uses(m: Message, state: FSMContext):
     data = await state.get_data()
-    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите количество использований для промокода")
+    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите время, на которое промокод будет выдавать продукт\n\n1 час - 1h\n1 день - 1d\n1 месяц - 1m")
     await state.update_data(promo_uses=m.text)
     await state.set_state(CreatePromocode.promo_duration)
     await m.bot.delete_message(m.chat.id, m.message_id)
@@ -59,24 +63,34 @@ async def create_promo_uses(m: Message, state: FSMContext):
 @state_router.message(CreatePromocode.promo_duration)
 async def create_promo_duration(m: Message, state: FSMContext):
     data = await state.get_data()
-    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите время, на которое промокод будет выдавать продукт\n\n1 час - 1h\n1 день - 1d\n1 месяц - 1m")
+    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите время действия промокода\n\n1 час - 1h\n1 день - 1d\n1 месяц - 1m")
     await state.update_data(promo_duration=m.text)
     await state.set_state(CreatePromocode.promo_end_date)
     await m.bot.delete_message(m.chat.id, m.message_id)
 
 @state_router.message(CreatePromocode.promo_end_date)
 async def create_promo_end_date(m: Message, state: FSMContext):
-    data = await state.get_data()
-    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Введите время действия промокода\n\n1 час - 1h\n1 день - 1d\n1 месяц - 1m")
+    #    promo_name = State()
+    #    promo_uses = State()
+    #    promo_duration = State()
+    #    promo_end_date = State()
+    #    product_id = State()
+
+    
+    
     await state.update_data(promo_end_date=m.text)
+    data = await state.get_data()
     await state.set_state(CreatePromocode.product_id)
     await m.bot.delete_message(m.chat.id, m.message_id)
+    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  
+                                  text="Выберите продукт, для которого хотите создать промокод",
+                                  reply_markup=await ikb.create_promocode_product_selection_keyboard(data['promo_name'], data['promo_uses'], data['promo_duration'], data['promo_end_date']))
 
-@state_router.message(CreatePromocode.promo_duration)
-async def create_promo_end_date(m: Message, state: FSMContext):
+@state_router.message(CreatePromocode.product_id)
+async def create_promo_product_id(m: Message, state: FSMContext):
     data = await state.get_data()
-    await m.bot.edit_message_text(message_id=data['message_id'], chat_id=m.from_user.id,  text="Выберите продукт, для которого хотите создать промокод")
-    await state.update_data(promo_end_date=m.text)
+
+    await state.update_data(product_id=m.text)
     await state.clear()
     await m.bot.delete_message(m.chat.id, m.message_id)
 

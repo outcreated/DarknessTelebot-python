@@ -25,30 +25,38 @@ async def add_promocode(
         promocode_uses: int,
         promocode_end_date: str,
         promocode_product_id: int,
-        promocode_product_duration: int,
+        promocode_product_duration: str,
         promocode_description: Optional[str] = ""
         ) -> bool:
     async with async_session() as session:
         promocode = await session.scalar(select(Promocode).where(Promocode.name == promocode_name))
 
         if not promocode: 
-            delay, type
+            delay = 0
+            __type = ""
+
+            product_delay = 0
+            _type = ""
 
             try:
-                delay, type = date_split(promocode_end_date)
+                delay, __type = date_split(promocode_end_date)
+                product_delay, _type = date_split(promocode_product_duration)
             except IndexError as e:
                 return False
 
-            delay *= time_multipliers.get(type, 60000)
+            delay *= time_multipliers.get(__type, 60)
+            product_delay *= time_multipliers.get(_type, 60)
+
 
             
             promocode = Promocode(
                 name=promocode_name, 
                 uses_left=promocode_uses, 
-                end_date=delay, 
+                end_date=int(time.time()) + delay, 
                 description=promocode_description,
                 product_id=promocode_product_id,
-                product_duration=promocode_product_duration
+                product_duration=product_delay,
+                status=True
                 )
             session.add(promocode)
             await session.commit()

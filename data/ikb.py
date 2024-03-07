@@ -3,6 +3,11 @@ from data.telebot_manager import KeyboardBuilder
 from database.database_core import Product, SubscriptionPattern, User
 from database import requests_sub, requests_product
 
+def back_to_main_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text="⬅️ В главное меню", callback_data="main_menu")
+    return builder.build(sizes=(1,))
+
 def check_preregister_subscribed() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
     builder.btn(text="♻️ Проверить подписку", callback_data="check_preregister_subscribed")
@@ -168,6 +173,19 @@ def admin_promocode_menu_keyboard() -> InlineKeyboardMarkup:
     builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
 
     return builder.build(sizes=(1, 1))
+
+async def create_promocode_product_selection_keyboard(promo_name: str, promo_uses: str, promo_duration: str, promo_end: str) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+
+    products = await requests_product.get_all_products()
+
+    for product in products:
+        builder.btn(text=product.name, callback_data=f"create_promocode_apanel?{product.id}&{promo_name}&{promo_uses}&{promo_duration}&{promo_end}")
+
+    builder.keyboard.adjust(3, True)
+    return builder.build()
+
+
 
 
 
