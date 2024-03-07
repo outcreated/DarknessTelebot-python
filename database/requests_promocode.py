@@ -12,26 +12,29 @@ time_multipliers = {
     "D": 86400
 }
 
+
 async def get_promocode_by_id(promocode_id: int) -> Promocode:
     async with async_session() as session:
         return await session.scalar(select(Promocode).where(Promocode.id == promocode_id))
-    
+
+
 async def get_promocode_by_name(promocode_name: str) -> Promocode:
     async with async_session() as session:
         return await session.scalar(select(Promocode).where(Promocode.name == promocode_name))
 
+
 async def add_promocode(
-        promocode_name: str, 
+        promocode_name: str,
         promocode_uses: int,
         promocode_end_date: str,
         promocode_product_id: int,
         promocode_product_duration: str,
         promocode_description: Optional[str] = ""
-        ) -> bool:
+) -> bool:
     async with async_session() as session:
         promocode = await session.scalar(select(Promocode).where(Promocode.name == promocode_name))
 
-        if not promocode: 
+        if not promocode:
             delay = 0
             __type = ""
 
@@ -47,24 +50,23 @@ async def add_promocode(
             delay *= time_multipliers.get(__type, 60)
             product_delay *= time_multipliers.get(_type, 60)
 
-
-            
             promocode = Promocode(
-                name=promocode_name, 
-                uses_left=promocode_uses, 
-                end_date=int(time.time()) + delay, 
+                name=promocode_name,
+                uses_left=promocode_uses,
+                end_date=int(time.time()) + delay,
                 description=promocode_description,
                 product_id=promocode_product_id,
                 product_duration=product_delay,
                 status=True
-                )
+            )
             session.add(promocode)
             await session.commit()
             return True
         else:
             return False
-        
-async def activate_promocode(promocode_name: str, telegram_id) -> tuple: 
+
+
+async def activate_promocode(promocode_name: str, telegram_id) -> tuple:
     async with async_session() as session:
         promocode = await session.scalar(select(Promocode).where(Promocode.name == promocode_name))
         user = await session.scalar(select(User).where(User.telegram_id == telegram_id))
@@ -85,7 +87,8 @@ async def activate_promocode(promocode_name: str, telegram_id) -> tuple:
                 promocodes.insert(0, promocode.id)
                 user.set_promocodes(promocodes)
 
-                subcription = await session.scalar(select(UserSubscription).where(UserSubscription.telegram_id == telegram_id))
+                subcription = await session.scalar(
+                    select(UserSubscription).where(UserSubscription.telegram_id == telegram_id))
                 product = await session.scalar(select(Product).where(Product.id == promocode.product_id))
 
                 if not subcription:
@@ -93,10 +96,11 @@ async def activate_promocode(promocode_name: str, telegram_id) -> tuple:
                         telegram_id=telegram_id,
                         end_date=int(time.time()) + promocode.product_duration,
                         product_id=promocode.product_id
-                        )
+                    )
                     session.add(subcription)
                 else:
-                    subcription.end_date = int(time.time()) + ((subcription.end_date - int(time.time())) + promocode.product_duration)
+                    subcription.end_date = int(time.time()) + (
+                                (subcription.end_date - int(time.time())) + promocode.product_duration)
                     await session.merge(subcription)
 
                 dur = subcription.end_date
@@ -116,7 +120,8 @@ async def activate_promocode(promocode_name: str, telegram_id) -> tuple:
 
         else:
             return ("PROMOCODE_NOT_FOUND",)
-        
+
+
 def date_split(input_string):
     match = re.match(r"(\d+)(\w)", input_string)
     if match:

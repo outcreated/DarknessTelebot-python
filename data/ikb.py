@@ -3,15 +3,18 @@ from data.telebot_manager import KeyboardBuilder
 from database.database_core import Product, SubscriptionPattern, User
 from database import requests_sub, requests_product
 
+
 def back_to_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
     builder.btn(text="⬅️ В главное меню", callback_data="main_menu")
     return builder.build(sizes=(1,))
 
+
 def check_preregister_subscribed() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
     builder.btn(text="♻️ Проверить подписку", callback_data="check_preregister_subscribed")
     return builder.build(sizes=(1,))
+
 
 def main_menu_keyboard(user: User) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -28,13 +31,15 @@ def main_menu_keyboard(user: User) -> InlineKeyboardMarkup:
         return builder.build(sizes=(2, 2, 1, 1, 1))
     else:
         return builder.build(sizes=(2, 2, 1, 1))
-    
+
+
 def referal_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
     builder.btn(text="💸 Вывести деньги", callback_data="user_ref_withdraw_money")
     builder.btn(text="⬅️ Назад", callback_data="main_menu")
 
     return builder.build(sizes=(1, 1))
+
 
 def promocode_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -43,11 +48,13 @@ def promocode_menu_keyboard() -> InlineKeyboardMarkup:
 
     return builder.build(sizes=(1, 1))
 
+
 def activated_promocode_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
     builder.btn(text="⬅️ Вернуться в меню", callback_data="main_menu")
 
     return builder.build(sizes=(1,))
+
 
 def product_menu_keyboard(products: tuple[Product]) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -61,27 +68,29 @@ def product_menu_keyboard(products: tuple[Product]) -> InlineKeyboardMarkup:
 
     return builder.build()
 
+
 def current_product_menu_keyboard(subscriptions: tuple[SubscriptionPattern]) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
 
     for subscription in subscriptions:
-        builder.btn(text=f"💸 {subscription.cost} $ | {int(subscription.duration/86400)} дн.", 
+        builder.btn(text=f"💸 {subscription.cost} $ | {int(subscription.duration / 86400)} дн.",
                     callback_data=f"user_buy_subscription@{subscription.id}")
-        
+
     builder.keyboard.adjust(3, True)
 
     builder.btn(text="⬅️ Назад", callback_data="user_product_menu")
 
     return builder.build()
 
+
 def crypto_bot_pay_keyboard(url: str) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
     builder.btn(text="💸 Оплатить", callback_data="-", url=url)
     builder.btn(text="🚫 Отмена", callback_data="user_cancel_buy_subscription")
     builder.btn(text="♻️ Обновить статус платежа", callback_data="update_invoice_status")
-    
 
     return builder.build(sizes=(2, 1))
+
 
 def settings_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -94,9 +103,10 @@ def settings_menu_keyboard() -> InlineKeyboardMarkup:
 
     return builder.build(sizes=(1, 1, 1, 1, 2))
 
+
 async def subscriptions_menu_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
-    
+
     subscriptions = await requests_sub.get_user_subscriptions(telegram_id=telegram_id)
 
     for subscription in subscriptions:
@@ -108,6 +118,7 @@ async def subscriptions_menu_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
 
     return builder.build()
 
+
 async def generate_product_info_menu_keyboard(product: Product) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
 
@@ -116,6 +127,7 @@ async def generate_product_info_menu_keyboard(product: Product) -> InlineKeyboar
     builder.btn(text="⬅️ Назад", callback_data="main_menu")
 
     return builder.build(sizes=(2, 1))
+
 
 def apanel_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -132,7 +144,8 @@ def apanel_menu_keyboard() -> InlineKeyboardMarkup:
 
     builder.btn(text="⬅️ Назад", callback_data="main_menu")
 
-    return builder.build(sizes=(2,2,2,1,1))
+    return builder.build(sizes=(2, 2, 2, 1, 1))
+
 
 def admin_refsystem_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -141,6 +154,7 @@ def admin_refsystem_menu_keyboard() -> InlineKeyboardMarkup:
     builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
 
     return builder.build(sizes=(1, 1))
+
 
 def admin_product_menu_keyboard(products: tuple[Product]) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -151,6 +165,7 @@ def admin_product_menu_keyboard(products: tuple[Product]) -> InlineKeyboardMarku
 
     builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
     return builder.build()
+
 
 def admin_edit_product_menu_keyboard(product: Product) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -164,7 +179,8 @@ def admin_edit_product_menu_keyboard(product: Product) -> InlineKeyboardMarkup:
 
     builder.btn(text="⬅️ Назад", callback_data="admin_product_menu")
 
-    return builder.build(sizes=(2,2,1,1,1))
+    return builder.build(sizes=(2, 2, 1, 1, 1))
+
 
 def admin_promocode_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
@@ -174,18 +190,16 @@ def admin_promocode_menu_keyboard() -> InlineKeyboardMarkup:
 
     return builder.build(sizes=(1, 1))
 
-async def create_promocode_product_selection_keyboard(promo_name: str, promo_uses: str, promo_duration: str, promo_end: str) -> InlineKeyboardMarkup:
+
+async def create_promocode_product_selection_keyboard(promo_name: str, promo_uses: str, promo_duration: str,
+                                                      promo_end: str) -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
 
     products = await requests_product.get_all_products()
 
     for product in products:
-        builder.btn(text=product.name, callback_data=f"create_promocode_apanel?{product.id}&{promo_name}&{promo_uses}&{promo_duration}&{promo_end}")
+        builder.btn(text=product.name,
+                    callback_data=f"create_promocode_apanel?{product.id}&{promo_name}&{promo_uses}&{promo_duration}&{promo_end}")
 
     builder.keyboard.adjust(3, True)
     return builder.build()
-
-
-
-
-

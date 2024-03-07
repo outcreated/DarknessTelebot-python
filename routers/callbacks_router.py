@@ -1,13 +1,8 @@
-import threading
-import time
 import config
 import cryptobot
 import datetime
-import asyncio
 
 from aiogram import Router, F
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, FSInputFile
 from routers.commands_router import check_user_channel_subscribed, preRegisterUsers, generate_user_text_profile
 from database import requests_user, requests_promocode, requests_product, requests_sub
@@ -16,15 +11,10 @@ from data import ikb
 
 callback_router = Router()
 
-class CreatePromocode(StatesGroup):
-    promo_name = State()
-    promo_uses = State()
-    product_id = State()
-    promo_duration = State()
 
-#================================================================
-#=====================USER=======================================
-#================================================================
+# ================================================================
+# =====================USER=======================================
+# ================================================================
 
 @callback_router.callback_query(F.data == "check_preregister_subscribed")
 async def register_of_button(c: CallbackQuery):
@@ -38,9 +28,10 @@ async def register_of_button(c: CallbackQuery):
             await c.message.answer("Вы уже зарегистрирваны!")
 
         await c.bot.delete_message(c.from_user.id, c.message.message_id)
-        
+
     else:
         await c.answer("❌ Вы не подписаны на канал", show_alert=False, cache_time=2)
+
 
 @callback_router.callback_query(F.data == "main_menu")
 async def open_main_menu(c: CallbackQuery):
@@ -59,27 +50,32 @@ async def open_promocode_menu(c: CallbackQuery):
     user = await requests_user.get_user_by_telegram_id(c.from_user.id)
     await c.message.edit_text(text=await generate_promocode_menu_text(user), reply_markup=ikb.promocode_menu_keyboard())
 
+
 @callback_router.callback_query(F.data == "user_product_menu")
 async def open_product_menu(c: CallbackQuery):
     products = await requests_product.get_all_products()
 
     await c.message.edit_text(text=await generate_product_menu_text(), reply_markup=ikb.product_menu_keyboard(products))
 
+
 @callback_router.callback_query(F.data == "user_settings_menu")
 async def user_settings_menu(c: CallbackQuery):
     await c.message.edit_text(text="Настройки. Все", reply_markup=ikb.settings_menu_keyboard())
 
+
 @callback_router.callback_query(F.data == "user_subscriptions_menu")
 async def user_subscriptions_menu(c: CallbackQuery):
     await c.message.edit_text(
-        text=await generate_subscriptions_menu_text(c.from_user.id), 
+        text=await generate_subscriptions_menu_text(c.from_user.id),
         reply_markup=await ikb.subscriptions_menu_keyboard(c.from_user.id))
+
 
 @callback_router.callback_query(F.data.startswith("user_info_product@"))
 async def user_info_product(c: CallbackQuery):
     product = await requests_product.get_product_by_id(int(c.data.split("@")[1]))
     await c.message.edit_text(text=await generate_product_info_menu_text(product),
                               reply_markup=await ikb.generate_product_info_menu_keyboard(product))
+
 
 # ---------------------------------------------------
 # ---------------------------------------------------
@@ -89,9 +85,10 @@ async def open_product_menu_by_id(c: CallbackQuery):
     product = await requests_product.get_product_by_id(int(c.data.split("@")[1]))
     product_subs = await requests_sub.get_product_subscriptions_patterns(product.id)
     await c.message.edit_text(
-        text=await generate_current_product_menu_text(product), 
+        text=await generate_current_product_menu_text(product),
         reply_markup=ikb.current_product_menu_keyboard(product_subs))
-    
+
+
 @callback_router.callback_query(F.data.startswith("user_buy_subscription@"))
 async def user_buy_subscription(c: CallbackQuery):
     subscription_id = int(c.data.split("@")[1])
@@ -100,7 +97,8 @@ async def user_buy_subscription(c: CallbackQuery):
     url = await cryptobot.create_invoice(subscription.cost, c.from_user.id, subscription.id)
     await c.message.edit_text(await generate_buy_subscription_text(),
                               reply_markup=ikb.crypto_bot_pay_keyboard(url))
-    
+
+
 @callback_router.callback_query(F.data == "update_invoice_status")
 async def update_invoice_status(c: CallbackQuery):
     status = await cryptobot.update_invoice(c.from_user.id)
@@ -114,28 +112,30 @@ async def update_invoice_status(c: CallbackQuery):
         subscription = await requests_sub.get_subscription_by_id(status[1])
         await requests_user.add_referrer_balance(user, subscription.cost)
         await requests_sub.add_subscription_to_user(status[1], c.from_user.id)
-        await c.message.edit_text(text=await generate_user_text_profile(user), 
+        await c.message.edit_text(text=await generate_user_text_profile(user),
                                   reply_markup=ikb.main_menu_keyboard(user))
-        
+
+
 @callback_router.callback_query(F.data == "user_cancel_buy_subscription")
 async def user_cancel_buy_subscription(c: CallbackQuery):
     user = await requests_user.get_user_by_telegram_id(c.from_user.id)
     await cryptobot.delete_invoice(c.from_user.id)
     await c.answer("❌ Оплата отменена", cache_time=5)
-    await c.message.edit_text(text=await generate_user_text_profile(user), 
+    await c.message.edit_text(text=await generate_user_text_profile(user),
                               reply_markup=ikb.main_menu_keyboard(user))
-    
+
+
 @callback_router.callback_query(F.data.startswith("download_product@"))
 async def download_product(c: CallbackQuery):
     product_id = int(c.data.split("@")[1])
     file_path = f'downloads/{product_id}.txt'  # Укажите путь к вашему файлу
-    await c.message.answer_document(caption="Приятного использования", 
+    await c.message.answer_document(caption="Приятного использования",
                                     document=FSInputFile(path=file_path))
 
-    
+
 # ---------------------------------------------------
 # ---------------------------------------------------
-    
+
 @callback_router.callback_query(F.data == "user_ref_withdraw_money")
 async def user_ref_withdraw_money(c: CallbackQuery):
     user = await requests_user.get_user_by_telegram_id(c.from_user.id)
@@ -151,8 +151,8 @@ async def user_ref_withdraw_money(c: CallbackQuery):
     else:
         await c.answer("✅ Вы успешно отправили заявку на вывод!\n\nОжидайте ответ от администратора",
                        show_alert=True)
-    
-        
+
+
 async def generate_refsystem_menu_text(user: User) -> str:
     text = f"""
     ► [ 🎁 Реферальная система ]
@@ -170,6 +170,7 @@ async def generate_refsystem_menu_text(user: User) -> str:
 
     return text
 
+
 async def generate_promocode_menu_text(user: User) -> str:
     promocodes_id = user.get_promocodes()
     text = f"""► [ 🎁 Промокоды ]
@@ -181,20 +182,21 @@ async def generate_promocode_menu_text(user: User) -> str:
         ► <i><b>Пусто</b></i>
         """
         return text
-    
-    
+
     for i in range(len(promocodes_id)):
         promocode = await requests_promocode.get_promocode_by_id(promocodes_id[i])
         product = await requests_product.get_product_by_id(promocode.product_id)
-        text += f"\n    ► <i>#{promocode.name}</i> - <b>{product.name}</b> на <code>{promocode.product_duration/3600}</code><b> час(ов)</b>"
+        text += f"\n    ► <i>#{promocode.name}</i> - <b>{product.name}</b> на <code>{promocode.product_duration / 3600}</code><b> час(ов)</b>"
 
     return text
+
 
 async def generate_product_menu_text() -> str:
     return """► [ 💠 Товары ]
         ➖➖➖➖➖➖➖➖➖➖    
         B данном разделе вы можете приобрести или продлить подписку для различных продуктов
     """
+
 
 async def generate_current_product_menu_text(product: Product) -> str:
     text = f"""► [ 🔑 Меню товара ]
@@ -213,10 +215,12 @@ async def generate_current_product_menu_text(product: Product) -> str:
 
     return text
 
+
 async def generate_buy_subscription_text() -> str:
     return "Для того, чтобы купить данный продукт оплатите счет в <i>CryptoBot</i>\n " \
-           "У вас есть 5 минут на оплату, после чего счет <strong>перестанет существовать</strong> и при попытке его "\
+           "У вас есть 5 минут на оплату, после чего счет <strong>перестанет существовать</strong> и при попытке его " \
            "пополнить вы потеряете деньги и не получите ничего\n\n<strong>Рекомендуем</strong> указывать свой <i>Telegram ID</i> в коментарии к платежу"
+
 
 async def generate_subscriptions_menu_text(telegram_id: int) -> str:
     text = "► [ 🔑 Подписки ]\n\t➖➖➖➖➖➖➖➖➖➖"
@@ -233,7 +237,7 @@ async def generate_subscriptions_menu_text(telegram_id: int) -> str:
     ► Дата окончания > <code>{await timestamp_to_sub_end_date(sub.end_date)}</code>
     ➖➖➖➖➖➖➖➖➖➖
                     """
-        
+
     if count < 1:
         text += f"""
         ► <i><b>У вас нет активных подписок 😕</b></i>
@@ -241,6 +245,7 @@ async def generate_subscriptions_menu_text(telegram_id: int) -> str:
         return text
 
     return text
+
 
 async def generate_product_info_menu_text(product: Product) -> str:
     text = f"► [ 🔑 {product.name} ]\n\t➖➖➖➖➖➖➖➖➖➖\n\n"
@@ -254,12 +259,11 @@ async def timestamp_to_sub_end_date(timestamp: int) -> str:
     current_datetime = datetime.datetime.fromtimestamp(timestamp)
     return current_datetime.strftime('%d-%m-%Y | %H:%M:%S')
 
-#================================================================
-#=====================ADMIN======================================
-#================================================================
 
+# ================================================================
+# =====================ADMIN======================================
+# ================================================================
 
- 
 
 @callback_router.callback_query(F.data.startswith("admin_"))
 async def admin_callback(c: CallbackQuery):
@@ -268,7 +272,7 @@ async def admin_callback(c: CallbackQuery):
     if not user.isAdmin:
         await c.answer("❌ Нет доступа", show_alert=True)
         return
-    
+
     callback_name = c.data.split("admin_")[1]
 
     match callback_name:
@@ -291,25 +295,30 @@ async def admin_callback(c: CallbackQuery):
         case _:
             await c.answer(text="❌ Недопустимый параметр", show_alert=True)
 
+
 async def apanel_menu(c: CallbackQuery) -> None:
-    await c.message.edit_text(text="Админ панель", 
+    await c.message.edit_text(text="Админ панель",
                               reply_markup=ikb.apanel_menu_keyboard())
 
+
 async def admin_refsytem_menu(c: CallbackQuery) -> None:
-    await c.message.edit_text(text=await generate_admin_refsystem_menu_text(), 
+    await c.message.edit_text(text=await generate_admin_refsystem_menu_text(),
                               reply_markup=ikb.admin_refsystem_menu_keyboard())
-    
+
+
 async def admin_product_menu(c: CallbackQuery) -> None:
     products = await requests_product.get_all_products()
     await c.message.edit_text(text="Меню продуктов",
                               reply_markup=ikb.admin_product_menu_keyboard(products))
 
+
 async def admin_edit_product_menu(c: CallbackQuery, product_id: int) -> None:
     product = await requests_product.get_product_by_id(product_id)
 
-    await c.message.edit_text(text=await generate_admin_edit_product_menu_text(product), 
+    await c.message.edit_text(text=await generate_admin_edit_product_menu_text(product),
                               reply_markup=ikb.admin_edit_product_menu_keyboard(product))
-    
+
+
 async def admin_edit_product(c: CallbackQuery, edit_type: str, product_id: str) -> None:
     # TODO: добавить проверку на то, что такой параметр и реализацию для него
     match edit_type:
@@ -327,6 +336,7 @@ async def admin_edit_product(c: CallbackQuery, edit_type: str, product_id: str) 
             pass
         case _:
             await c.answer(text="❌ Недопустимый параметр", show_alert=True)
+
 
 async def admin_promocode_menu(c: CallbackQuery) -> None:
     await c.message.edit_text(text="Промокоды", reply_markup=ikb.admin_promocode_menu_keyboard())
@@ -347,21 +357,25 @@ async def create_promocode_apanel(c: CallbackQuery):
 
         if not result:
             await c.message.edit_text(text="Произошла неизвестная ошибка при создании промокода. Промокод не создан",
-                reply_markup=ikb.back_to_main_menu_keyboard())
+                                      reply_markup=ikb.back_to_main_menu_keyboard())
         else:
-            await c.message.edit_text(text=f"Промокод с названием #{promo_name} успешно создан! Осталось активаций: <strong>{promo_uses}</strong>",
+            await c.message.edit_text(
+                text=f"Промокод с названием #{promo_name} успешно создан! Осталось активаций: <strong>{promo_uses}</strong>",
                 reply_markup=ikb.back_to_main_menu_keyboard())
     except Exception as e:
-        await c.message.edit_text(text=f"Произошла внутренняя ошибка: \n\n\n{e}", reply_markup=ikb.back_to_main_menu_keyboard())
+        await c.message.edit_text(text=f"Произошла внутренняя ошибка: \n\n\n{e}",
+                                  reply_markup=ikb.back_to_main_menu_keyboard())
 
-#================================================================
-    
+
+# ================================================================
+
 async def generate_admin_edit_product_menu_text(product: Product) -> str:
     text = f"► [ 🔑 {product.name} ]\n\t"
     return text
-    
+
+
 async def generate_admin_refsystem_menu_text() -> str:
     text = "Реф. система\n\n\tТекущий общий процент: <code>10%</code>"
     return text
 
-#================================================================
+# ================================================================

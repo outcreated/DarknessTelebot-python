@@ -3,6 +3,7 @@ config.py
 database/darkness.db
 .vscode/
 .venv/*
+.idea/*
 downloads/*
 
 # Byte-compiled / optimized / DLL files

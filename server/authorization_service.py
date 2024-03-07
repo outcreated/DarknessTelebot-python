@@ -5,6 +5,7 @@ from database import requests_user, requests_sub
 
 app = Quart(__name__)
 
+
 @app.route('/login', methods=['POST'])
 async def login():
     try:
@@ -27,10 +28,10 @@ async def login():
 
                 for subscription in subscriptions:
                     if subscription.product_id == product_id:
-                        return jsonify({'status': 'success', 
-                                'message': 'SUB_ACTIVE',
-                                'end_date': subscription.end_date,
-                                }), 200
+                        return jsonify({'status': 'success',
+                                        'message': 'SUB_ACTIVE',
+                                        'end_date': subscription.end_date,
+                                        }), 200
                 await requests_user.update_user(user)
                 return jsonify({'status': 'error', 'message': 'SUB_NOT_FOUND', 'end_date': 0}), 404
             else:
@@ -38,13 +39,12 @@ async def login():
     except Exception as e:
         pass
 
+
 def run_server():
     oc.log("info", "Сервис авторизации успешно запущен")
     app.run()
 
+
 def init_auth_server():
     p = multiprocessing.Process(target=run_server)
     p.start()
-
-    
-

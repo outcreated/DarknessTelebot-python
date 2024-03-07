@@ -1,8 +1,7 @@
 import config
-import oc
 import datetime
 from data import ikb
-from aiogram import Router, Bot, F
+from aiogram import Router, Bot
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
 from database import requests_user, requests_sub, requests_product
@@ -17,6 +16,7 @@ async def main_menu_handler(m: Message) -> None:
     user = await requests_user.get_user_by_telegram_id(m.from_user.id)
     await m.answer(text=await generate_user_text_profile(user), reply_markup=ikb.main_menu_keyboard(user))
 
+
 @command_router.message(CommandStart())
 async def commandStartExecutor(m: Message) -> None:
     referrer_id = -1
@@ -30,8 +30,9 @@ async def commandStartExecutor(m: Message) -> None:
 
     status = await check_user_channel_subscribed(m.from_user.id, m.bot)
     if not status:
-        await m.answer(text="Чтобы использовать нашего бота, подпишитесь на канал, чтобы быть вкурсе всех новостей <a href='https://t.me/darknessparser'>ᅠ ᅠ </a>",
-                       reply_markup=ikb.check_preregister_subscribed())
+        await m.answer(
+            text="Чтобы использовать нашего бота, подпишитесь на канал, чтобы быть вкурсе всех новостей <a href='https://t.me/darknessparser'>ᅠ ᅠ </a>",
+            reply_markup=ikb.check_preregister_subscribed())
         return
     status = await requests_user.add_user(m.from_user.id, m.from_user.username, referrer_id)
     preRegisterUsers.pop(m.from_user.id)
@@ -47,8 +48,9 @@ async def check_user_channel_subscribed(user_id: int, bot: Bot) -> bool:
         user_id=user_id)
     return chat_member.status in ['member', 'creator', 'administrator']
 
+
 async def generate_user_text_profile(user: User) -> str:
-    profile =  f"""
+    profile = f"""
     ► [ 🪪 Главное меню ]
     ➖➖➖➖➖➖➖➖➖➖
     ► [ 🔰 ] ID > <code>{user.telegram_id}</code>
@@ -66,15 +68,15 @@ async def generate_user_text_profile(user: User) -> str:
     ► До > <code>{await timestamp_to_sub_end_date(sub.end_date)}</code>
     ➖➖➖➖➖➖➖➖➖➖
                     """
-    
 
     return profile
+
 
 async def timestamp_to_date(timestamp: int) -> str:
     current_datetime = datetime.datetime.fromtimestamp(timestamp)
     return current_datetime.strftime('%d-%m-%Y')
 
+
 async def timestamp_to_sub_end_date(timestamp: int) -> str:
     current_datetime = datetime.datetime.fromtimestamp(timestamp)
     return current_datetime.strftime('%d-%m-%Y | %H:%M:%S')
-    

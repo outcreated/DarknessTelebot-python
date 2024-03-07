@@ -1,6 +1,4 @@
-from email.policy import default
 import config
-import asyncio
 import oc
 import time
 import json
@@ -8,10 +6,11 @@ from sqlalchemy import BigInteger, Integer, String, Boolean, ForeignKey, Float, 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-   
+
 engine = create_async_engine(config.DATABASE_URL, echo=False, future=True)
 Base = declarative_base()
 async_session = async_sessionmaker(engine)
+
 
 class User(Base):
     __tablename__ = "users"
@@ -28,19 +27,20 @@ class User(Base):
     referals: Mapped[str] = mapped_column(String, default="")
     promocodes_used: Mapped[str] = mapped_column(String, default="")
     hwid: Mapped[str] = mapped_column(String, default="@")
- 
+
     def set_referals(self, referals):
         self.referals = json.dumps(referals)
 
     def get_referals(self):
         return json.loads(self.referals) if self.referals else []
-    
+
     def set_promocodes(self, promocodes_used):
         self.promocodes_used = json.dumps(promocodes_used)
 
     def get_promocodes(self):
         return json.loads(self.promocodes_used) if self.promocodes_used else []
-    
+
+
 class Promocode(Base):
     __tablename__ = "promocodes"
 
@@ -61,6 +61,7 @@ class Promocode(Base):
     def get_used_users(self):
         return json.loads(self.used_users) if self.used_users else []
 
+
 class Product(Base):
     __tablename__ = "products"
 
@@ -72,6 +73,7 @@ class Product(Base):
     version: Mapped[str] = mapped_column(String, default="1.0.0")
     active: Mapped[bool] = mapped_column(Boolean, default=False)
 
+
 class SubscriptionPattern(Base):
     __tablename__ = "subscription_patterns"
 
@@ -80,7 +82,7 @@ class SubscriptionPattern(Base):
     duration: Mapped[int] = mapped_column(BigInteger, default=0)
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.id'))
     product: Mapped[Product] = relationship(Product)
-    
+
 
 class UserSubscription(Base):
     __tablename__ = "user_subscriptions"
@@ -93,12 +95,14 @@ class UserSubscription(Base):
     product_id: Mapped[int] = mapped_column(Integer, ForeignKey('products.id'))
     product: Mapped[Product] = relationship(Product)
 
+
 class UserWithdrawMoney(Base):
     __tablename__ = "user_withdraw_money"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     telegram_id: Mapped[int] = mapped_column(Integer, ForeignKey('users.telegram_id'))
     amount: Mapped[float] = mapped_column(Float, default=0.0)
     date: Mapped[int] = mapped_column(BigInteger, default=int(time.time()))
+
 
 class PaidInvoice(Base):
     __tablename__ = "paid_invoices"
@@ -118,6 +122,7 @@ async def init_database():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         oc.log("info", "База данных успешно загружена")
+
 
 async def get_engine() -> AsyncEngine:
     return engine

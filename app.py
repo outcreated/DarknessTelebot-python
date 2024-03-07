@@ -4,8 +4,8 @@ from colorama import Fore as fr
 from colorama import init as colorama_init
 from server import authorization_service
 
-
 colorama_init()
+
 
 def init() -> None:
     oc.cls()
@@ -13,9 +13,10 @@ def init() -> None:
     logging.basicConfig(level=logging.INFO,
                         stream=sys.stdout,
                         format=oc.get_timestamp() +
-                        f'[{fr.CYAN}%(levelname)s{fr.RESET}] %(message)s')
-    
+                               f'[{fr.CYAN}%(levelname)s{fr.RESET}] %(message)s')
+
     asyncio.run(telebot.startBot())
+
 
 def install_dependencies():
     system = platform.system()
@@ -27,6 +28,7 @@ def install_dependencies():
     # Устанавливаем зависимости из requirements.txt
     os.system(command)
 
+
 if __name__ == '__main__':
-    #install_dependencies()
+    # install_dependencies()
     init()

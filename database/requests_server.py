@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import async_session
 from database.database_core import PaidInvoice, async_session
-from sqlalchemy import select
+
 
 async def save_paid_invoice(telegram_id: int, invoice_info):
     async with async_session() as s:
