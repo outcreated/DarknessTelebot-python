@@ -1,17 +1,23 @@
 import datetime
+import re
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from database import requests_promocode
+from database import requests_promocode, requests_user
 from data import ikb
+from database.database_core import User
 
 state_router = Router()
 
 
 class UsePromocodeState(StatesGroup):
     name = State()
+
+class SearchUserState(StatesGroup):
+    telegram_id = State()
+    message_id = 0
 
 
 class CreatePromocode(StatesGroup):
@@ -131,6 +137,44 @@ async def activate_promocode(m: Message, state: FSMContext):
         await m.answer("Произошла неизвестная ошибка, попробуйте позже или обратитесь к администратору")
 
     await state.clear()
+
+@state_router.callback_query(F.data == "search_user_by_id")
+async def search_user_by_id(c: CallbackQuery, state: FSMContext):
+    await c.message.edit_text(text="Введите ID пользователя для поиска")
+    await state.set_state(SearchUserState.telegram_id)
+    await state.update_data(message_id=c.message.message_id)
+
+@state_router.message(SearchUserState.telegram_id)
+async def search_user_by_id_state(m: Message, state: FSMContext):
+    data = await state.get_data()
+    user = await requests_user.get_user_by_telegram_id(int(m.text))
+
+    if not user:
+        await m.bot.edit_message_text(message_id=data['message_id'], 
+                                      chat_id=m.from_user.id,
+                                      text="Пользователь не найден!", 
+                                      reply_markup=ikb.back_to_main_menu_keyboard())
+    else:
+        await m.bot.edit_message_text(message_id=data['message_id'], 
+                                      chat_id=m.from_user.id,
+                                      text=await generate_user_info_text(user), 
+                                      reply_markup=ikb.manage_user_keyboard(user.telegram_id))
+    await m.bot.delete_message(m.chat.id, m.message_id)
+    await state.clear()
+
+
+async def generate_user_info_text(user: User) -> str:
+    text = f"> Профиль пользователя: @{user.username}\n\n" +\
+           f"\t\t\t\t > <strong>ID:</strong><code> {user.telegram_id}</code>\n" +\
+           f"\t\t\t\t > <strong>Баланс:</strong><code> {user.balance}</code>\n" +\
+           f"\t\t\t\t > <strong>Регистрация:</strong><code> {user.register_date}</code>\n" +\
+           f"\t\t\t\t > <strong>Список рефералов:</strong><code> [DATA]</code>\n" +\
+           f"\t\t\t\t > <strong>Рефералов:</strong><code> {len(user.get_referals())}</code>\n" +\
+           f"\t\t\t\t > <strong>ID Реферрера:</strong><code> {user.referrer_id}</code>\n" +\
+           f"\t\t\t\t > <strong>HWID:</strong><code> {user.hwid}</code>\n" +\
+           f"\t\t\t\t > <strong>Процент:</strong><code> {user.ref_percentage}</code>\n"
+    return text
+
 
 
 async def timestamp_to_sub_end_date(timestamp: int) -> str:

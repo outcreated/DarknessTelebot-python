@@ -50,3 +50,20 @@ async def add_subscription_to_user(subscription_id: int, telegram_id: int) -> No
             subcription.end_date += subscription_pattern.duration
             await session.merge(subcription)
         await session.commit()
+
+async def add_subscription_hours_to_user(hours: int, telegram_id: int, product_id: int) -> bool:
+    async with async_session() as session:
+        subcription = await session.scalar(select(UserSubscription).where(UserSubscription.telegram_id == telegram_id))
+
+        if not subcription:
+            subcription = UserSubscription(
+                telegram_id=telegram_id,
+                end_date=int(time.time()) + (hours * 60 * 60),
+                product_id=product_id
+            )
+            session.add(subcription)
+        else:
+            subcription.end_date += (hours * 60 * 60)
+            await session.merge(subcription)
+        await session.commit()
+        return True

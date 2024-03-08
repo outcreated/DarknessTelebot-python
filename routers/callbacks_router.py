@@ -4,9 +4,10 @@ import datetime
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, FSInputFile
+from aiogram.fsm.context import FSMContext
 from routers.commands_router import check_user_channel_subscribed, preRegisterUsers, generate_user_text_profile
 from database import requests_user, requests_promocode, requests_product, requests_sub
-from database.database_core import Product, User, Promocode
+from database.database_core import PaidInvoice, Product, User, Promocode
 from data import ikb
 
 callback_router = Router()
@@ -131,7 +132,32 @@ async def download_product(c: CallbackQuery):
     file_path = f'downloads/{product_id}.txt'  # Укажите путь к вашему файлу
     await c.message.answer_document(caption="Приятного использования",
                                     document=FSInputFile(path=file_path))
+    
+@callback_router.callback_query(F.data == "user_ref_exchange_time")
+async def user_ref_exchange_time(c: CallbackQuery):
+    user = await requests_user.get_user_by_telegram_id(c.from_user.id)
+    if user.balance <= 1.0:
+        await c.answer("\t\tНедостаточно средств\n\nМинимальная сумма для перевода: 1.0 $",
+                       show_alert=True)
+        return
+    
+    await c.message.edit_text(text=f"Вы действительно хотите перевести <strong>{user.balance} $</strong> в <strong>{int(user.balance) * 4}</strong> часов подписки?\n\nВыберите продукт, чтобы получить часы подписки",
+                              reply_markup=await ikb.exchange_balance_to_product_time())
+    
+@callback_router.callback_query(F.data.startswith("user_accept_exchange_balance@"))
+async def user_accept_exchange_balance(c: CallbackQuery):
+    product_id = int(c.data.split("@")[1])
+    user = await requests_user.get_user_by_telegram_id(c.from_user.id)
+    bal = int(user.balance)
 
+    status = await requests_sub.add_subscription_hours_to_user(bal * 4, c.from_user.id, product_id)
+    if not status:
+        await c.answer("❌ Произошла неизвестная ошибка. Попробуйте позже")
+        return
+    user.balance = user.balance - bal
+    await requests_user.update_user(user)
+    await c.message.edit_text(text=f"✅ Вы успешно перевели <strong>{bal} $</strong> с вашего реферального баланса в <strong>{bal * 4}</strong> часов подписки!",
+                              reply_markup=ikb.back_to_main_menu_keyboard())
 
 # ---------------------------------------------------
 # ---------------------------------------------------
@@ -284,6 +310,8 @@ async def admin_callback(c: CallbackQuery):
             await admin_product_menu(c)
         case "promocode_menu":
             await admin_promocode_menu(c)
+        case "manage_users":
+            await admin_manage_users(c)
         case _ if callback_name.startswith("edit_product_menu@"):
             product_id = int(callback_name.split("@")[1])
             await admin_edit_product_menu(c, product_id)
@@ -341,9 +369,13 @@ async def admin_edit_product(c: CallbackQuery, edit_type: str, product_id: str) 
 async def admin_promocode_menu(c: CallbackQuery) -> None:
     await c.message.edit_text(text="Промокоды", reply_markup=ikb.admin_promocode_menu_keyboard())
 
+async def admin_manage_users(c: CallbackQuery) -> None:
+    await c.message.edit_text(text="Управление пользователями",
+                              reply_markup=await ikb.admin_manage_users_keyboard())
+
 
 @callback_router.callback_query(F.data.startswith("create_promocode_apanel?"))
-async def create_promocode_apanel(c: CallbackQuery):
+async def create_promocode_apanel(c: CallbackQuery, state: FSMContext):
     creation_code = c.data.split("?")[1]
 
     product_id = creation_code.split("&")[0]
@@ -354,7 +386,7 @@ async def create_promocode_apanel(c: CallbackQuery):
 
     try:
         result = await requests_promocode.add_promocode(promo_name, promo_uses, promo_end, product_id, promo_duration)
-
+        await state.clear()
         if not result:
             await c.message.edit_text(text="Произошла неизвестная ошибка при создании промокода. Промокод не создан",
                                       reply_markup=ikb.back_to_main_menu_keyboard())
@@ -365,7 +397,53 @@ async def create_promocode_apanel(c: CallbackQuery):
     except Exception as e:
         await c.message.edit_text(text=f"Произошла внутренняя ошибка: \n\n\n{e}",
                                   reply_markup=ikb.back_to_main_menu_keyboard())
+        
+    
+@callback_router.callback_query(F.data == "withdraw_requests_menu")
+async def withdraw_requests_menu(c: CallbackQuery):
+    await c.message.edit_text(text="Заявки на вывод средств от пользователей",
+                              reply_markup=await ikb.withdraw_requests_menu_keyboard())
+    
+@callback_router.callback_query(F.data.startswith("withdraw_request@"))
+async def withdraw_request(c: CallbackQuery):
+    request_id = int(c.data.split("@")[1])
+    
+    request = await requests_user.get_withdraw_by_id(request_id)
+    user = await requests_user.get_user_by_telegram_id(request.telegram_id)
 
+    await c.message.edit_text(text=f"Заявка на вывод от @{user.username}\n\n",
+                              reply_markup=ikb.withdraw_request_keyboard(request.telegram_id))
+
+
+@callback_router.callback_query(F.data.startswith("user_withdraw_request_"))
+async def user_withdraw_request(c: CallbackQuery):
+    type = str(c.data.split("user_withdraw_request_")[1]).split("@")[0]
+    user_id = str(c.data.split("user_withdraw_request_")[1]).split("@")[1]
+    user = await requests_user.get_user_by_telegram_id(user_id)
+    withdraw_request = await requests_user.get_withdraw_by_telegram_id(user_id)
+
+    match type:
+        case "balance_history":
+            historyText = f"История баланса пользователя {user_id}\n\n"
+            counter = 1
+            user_paid_invoices = await requests_user.get_paid_invoices_by_telegram_id(user_id)
+            for invoice in user_paid_invoices:  
+                historyText += f"💵 <code>[{counter}]</code> > <strong>[{invoice.telegram_id}]</strong> оплатил <i>#IV{invoice.get_invoice_info()[0][1]}</i> на <code>{invoice.get_invoice_info()[3][1]}$</code>\n"
+                counter += 1
+            
+            for referal_id in user.get_referals():
+                referral = await requests_user.get_paid_invoices_by_telegram_id(referal_id)
+                for invoice in referral:
+                    historyText += f"🎭 <code>[{counter}]</code> > <strong>[{invoice.telegram_id}]</strong> оплатил <i>#IV{invoice.get_invoice_info()[0][1]}</i> на <code>{invoice.get_invoice_info()[3][1]}$</code>\n"
+                    counter += 1
+
+            await c.message.edit_text(text=historyText, reply_markup=ikb.back_to_witdraw_request_keyboard(withdraw_request.id))
+        case "accept":
+            await requests_user.accept_withdraw_request(c.from_user.id, int(c.data.split("user_withdraw_request_")[1].split("@")[0]))
+        case "decline":
+            await requests_user.decline_withdraw_request(c.from_user.id, int(c.data.split("user_withdraw_request_")[1].split("@")[0]))
+        case _:
+            await c.answer(text="❌ Недопустимый параметр", show_alert=True)
 
 # ================================================================
 

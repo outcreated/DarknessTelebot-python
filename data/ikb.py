@@ -1,7 +1,7 @@
 from aiogram.types import InlineKeyboardMarkup
 from data.telebot_manager import KeyboardBuilder
 from database.database_core import Product, SubscriptionPattern, User
-from database import requests_sub, requests_product
+from database import requests_sub, requests_product, requests_user
 
 
 def back_to_main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -23,22 +23,23 @@ def main_menu_keyboard(user: User) -> InlineKeyboardMarkup:
     builder.btn(text="🎁 Промокоды", callback_data="user_promocode_menu")
     builder.btn(text="🔑 Подписки", callback_data="user_subscriptions_menu")
     builder.btn(text="💠 Товары", callback_data="user_product_menu")
-    builder.btn(text="⚙️ Настройки", callback_data="user_settings_menu")
+    # builder.btn(text="⚙️ Настройки", callback_data="user_settings_menu")
     if user.isAdmin:
         builder.btn(text="🔒 Админ-панель", callback_data="admin_apanel_menu")
     builder.btn(text="🔰 Помощь", callback_data="open_darkness_manager", url="https://t.me/darknessmanager")
     if user.isAdmin:
-        return builder.build(sizes=(2, 2, 1, 1, 1))
-    else:
         return builder.build(sizes=(2, 2, 1, 1))
+    else:
+        return builder.build(sizes=(2, 2, 1))
 
 
 def referal_menu_keyboard() -> InlineKeyboardMarkup:
     builder = KeyboardBuilder()
+    builder.btn(text="⏱ Перевести в часы", callback_data="user_ref_exchange_time")
     builder.btn(text="💸 Вывести деньги", callback_data="user_ref_withdraw_money")
     builder.btn(text="⬅️ Назад", callback_data="main_menu")
 
-    return builder.build(sizes=(1, 1))
+    return builder.build(sizes=(2, 1))
 
 
 def promocode_menu_keyboard() -> InlineKeyboardMarkup:
@@ -140,7 +141,7 @@ def apanel_menu_keyboard() -> InlineKeyboardMarkup:
     builder.btn(text=f"📝 Скачать логи", callback_data="admin_")
     builder.btn(text=f"🔔 Отправить рассылку", callback_data="admin_")
 
-    builder.btn(text=f"🧩 Управление пользователями", callback_data="admin_")
+    builder.btn(text=f"🧩 Управление пользователями", callback_data="admin_manage_users")
 
     builder.btn(text="⬅️ Назад", callback_data="main_menu")
 
@@ -203,3 +204,76 @@ async def create_promocode_product_selection_keyboard(promo_name: str, promo_use
 
     builder.keyboard.adjust(3, True)
     return builder.build()
+
+async def exchange_balance_to_product_time():
+    builder = KeyboardBuilder()
+    products = await requests_product.get_all_products()
+    for product in products:
+        builder.btn(text=product.name, callback_data=f"user_accept_exchange_balance@{product.id}")
+
+    builder.keyboard.adjust(3, True)
+
+    builder.btn(text="❌ Отмена", callback_data="main_menu")
+
+    return builder.build()
+
+async def admin_manage_users_keyboard():
+    builder = KeyboardBuilder()
+    withdraw_requests = await requests_user.get_all_withdraws()
+    users = await requests_user.get_all_users()
+
+    usersCount = 0
+    withdraw_requestsCount = 0
+    for user in users:
+        usersCount += 1
+    for withdraw_request in withdraw_requests:
+        withdraw_requestsCount += 1
+
+    builder.btn(text=f"🔎 Найти пользователя [{usersCount}]", callback_data="search_user_by_id")
+    builder.btn(text=f"💸 Заявки на вывод [{withdraw_requestsCount}]", callback_data="withdraw_requests_menu")
+    builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
+
+    return builder.build(sizes=(1, 1, 1))
+
+def manage_user_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text="Сбросить подписки", callback_data=f"manageuser_clear_subscriptions@{telegram_id}")
+    builder.btn(text="Обнулить баланс", callback_data=f"manageuser_clear_balance@{telegram_id}")
+    builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
+
+    return builder.build(sizes=(2, 1))
+
+async def withdraw_requests_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    withdraw_requests = await requests_user.get_all_withdraws()
+
+    for withdraw_request in withdraw_requests:
+        user = await requests_user.get_user_by_telegram_id(withdraw_request.telegram_id)
+
+        builder.btn(text=f"{user.username} | {withdraw_request.amount} $", 
+                    callback_data=f"withdraw_request@{withdraw_request.id}")
+        
+    builder.keyboard.adjust(2, True)
+    builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
+    return builder.build()
+
+def withdraw_request_keyboard(telegram_id) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+
+    builder.btn(text="💾 История баланса", callback_data=f"user_withdraw_request_balance_history@{telegram_id}")
+    builder.btn(text="✅ Одобрить заявку", callback_data=f"user_withdraw_request_accept@{telegram_id}")
+    builder.btn(text="❌ Отклонить заявку", callback_data=f"user_withdraw_request_decline@{telegram_id}")
+    builder.btn(text="⬅️ Назад", callback_data="withdraw_requests_menu")
+
+    return builder.build(sizes=(1, 2, 1))
+
+def back_to_witdraw_request_keyboard(request_id: int) -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text="⬅️ Назад", callback_data=f"withdraw_request@{request_id}")
+
+    return builder.build()
+
+
+
+
+

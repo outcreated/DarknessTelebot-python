@@ -1,4 +1,4 @@
-from database.database_core import User, UserWithdrawMoney
+from database.database_core import PaidInvoice, User, UserWithdrawMoney
 from sqlalchemy.ext.asyncio import async_session
 from database.database_core import async_session
 from sqlalchemy import select
@@ -60,3 +60,19 @@ async def create_withdraw(telegram_id: int) -> None:
             return True
         else:
             return False
+        
+async def get_all_withdraws() -> tuple[UserWithdrawMoney]:
+    async with async_session() as s:
+        return await s.scalars(select(UserWithdrawMoney))
+    
+async def get_withdraw_by_id(id: int) -> UserWithdrawMoney:
+    async with async_session() as s:
+        return await s.scalar(select(UserWithdrawMoney).where(UserWithdrawMoney.id == id))
+
+async def get_withdraw_by_telegram_id(telegram_id: int) -> UserWithdrawMoney:
+    async with async_session() as s:
+        return await s.scalar(select(UserWithdrawMoney).where(UserWithdrawMoney.telegram_id == telegram_id))
+    
+async def get_paid_invoices_by_telegram_id(telegram_id: int) -> tuple[PaidInvoice]:
+    async with async_session() as s:
+        return await s.scalars(select(PaidInvoice).where(PaidInvoice.telegram_id == telegram_id))

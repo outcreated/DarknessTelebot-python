@@ -56,7 +56,7 @@ async def generate_user_text_profile(user: User) -> str:
     ► [ 🔰 ] ID > <code>{user.telegram_id}</code>
     ► [ 📝 ] Регистрация > <code>{await timestamp_to_date(user.register_date)}</code>
     ► [ 🧩 ] Рефералов > <code>{len(user.get_referals())}</code>
-    ► [ 💰 ] Реф. баланс > <code>{user.balance} $</code>
+    ► [ 💰 ] Реф. баланс > <code>{"%.2f" % user.balance} $</code>
     ➖➖➖➖➖➖➖➖➖➖
     """
     subs = await requests_sub.get_user_subscriptions(user.telegram_id)
