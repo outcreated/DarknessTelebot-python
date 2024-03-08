@@ -4,7 +4,10 @@ database/darkness.db
 .vscode/
 .venv/*
 .idea/*
-downloads/*
+downloads/*.rar
+logs/*.log
+logs/*.zip
+logs/old/*.log
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

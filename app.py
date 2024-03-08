@@ -1,3 +1,4 @@
+from cgitb import handler
 import telebot, asyncio, logging, sys, threading, oc, platform, os
 
 from colorama import Fore as fr
@@ -10,11 +11,6 @@ colorama_init()
 def init() -> None:
     oc.cls()
     authorization_service.init_auth_server()
-    logging.basicConfig(level=logging.INFO,
-                        stream=sys.stdout,
-                        format=oc.get_timestamp() +
-                               f'[{fr.CYAN}%(levelname)s{fr.RESET}] %(message)s')
-
     asyncio.run(telebot.startBot())
 
 

@@ -76,3 +76,18 @@ async def get_withdraw_by_telegram_id(telegram_id: int) -> UserWithdrawMoney:
 async def get_paid_invoices_by_telegram_id(telegram_id: int) -> tuple[PaidInvoice]:
     async with async_session() as s:
         return await s.scalars(select(PaidInvoice).where(PaidInvoice.telegram_id == telegram_id))
+    
+async def accept_withdraw_request(telegram_id: int) -> None:
+    async with async_session() as s:
+        userWithdraw = await s.scalar(select(UserWithdrawMoney).where(UserWithdrawMoney.telegram_id == telegram_id))
+        user = await s.scalar(select(User).where(User.telegram_id == userWithdraw.telegram_id))
+        user.balance = user.balance - userWithdraw.amount
+        await s.merge(user)
+        await s.delete(userWithdraw)
+        await s.commit()
+
+async def decline_withdraw_request(telegram_id: int) -> None:
+    async with async_session() as s:
+        userWithdraw = await s.scalar(select(UserWithdrawMoney).where(UserWithdrawMoney.telegram_id == telegram_id))
+        await s.delete(userWithdraw)
+        await s.commit()

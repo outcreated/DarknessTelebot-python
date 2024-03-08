@@ -7,6 +7,9 @@ from colorama import Fore as fr
 def get_timestamp() -> str:
     return time.strftime(f"[{fr.LIGHTMAGENTA_EX}%H:%M:%S{fr.RESET}] ", time.localtime())
 
+def get_current_date() -> str:
+    return time.strftime("%d-%m-%Y-%H-%M-%S", time.localtime())
+
 
 def log(level: str, message: str) -> None:
     if level == "info":

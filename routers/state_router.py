@@ -15,6 +15,11 @@ state_router = Router()
 class UsePromocodeState(StatesGroup):
     name = State()
 
+class SendAlertState(StatesGroup):
+    text = State()
+    confirm = State()
+    message_id = 0
+
 class SearchUserState(StatesGroup):
     telegram_id = State()
     message_id = 0
@@ -161,6 +166,59 @@ async def search_user_by_id_state(m: Message, state: FSMContext):
                                       reply_markup=ikb.manage_user_keyboard(user.telegram_id))
     await m.bot.delete_message(m.chat.id, m.message_id)
     await state.clear()
+
+@state_router.callback_query(F.data == "send_alert_for_users")
+async def send_alert_for_users(c: CallbackQuery, state: FSMContext):
+    await state.set_state(SendAlertState.text)
+    await c.message.edit_text(text="Введите текст, который хотите отправить всем пользователям")
+    await state.update_data(message_id=c.message.message_id)
+
+@state_router.message(SendAlertState.text)
+async def send_alert_for_users_state(m: Message, state: FSMContext):
+    await state.update_data(text=m.text)
+    data = await state.get_data()
+    
+    await m.bot.edit_message_text(message_id=data['message_id'], 
+                                  chat_id=m.from_user.id, 
+                                  text="Вы действительно хотите отправить это сообщение?\n\n" + data['text'],
+                                  reply_markup=ikb.send_alert_for_users_keyboard())
+    await m.bot.delete_message(m.chat.id, m.message_id)
+    await state.set_state(SendAlertState.confirm)
+
+@state_router.callback_query(F.data.startswith("send_alert_for_users@"), SendAlertState.confirm)
+async def send_alert_for_users_confirm_state(c: CallbackQuery, state: FSMContext):
+    type = c.data.split("@")[1]
+    data = await state.get_data()
+    if type == "accept":
+        await c.bot.edit_message_text(message_id=c.message.message_id, 
+                                      chat_id=c.from_user.id, 
+                                      text="Идет рассылка сообщений... Ожидайте и ничего не делайте в боте")
+        counter = 0
+
+        users = await requests_user.get_all_users()
+        for user in users:
+            counter += 1
+            try:
+                await c.bot.send_message(chat_id=user.telegram_id, text=data['text'])
+            except Exception as e:
+                pass
+
+        await c.bot.edit_message_text(message_id=c.message.message_id, 
+                                      chat_id=c.from_user.id, 
+                                      text=f"Рассылка сообщений завершена. Всего сообщение получили: <code>{counter}</code> пользователей",
+                                      reply_markup=ikb.back_to_main_menu_keyboard())
+        
+    else:
+        await c.answer(text="Отмена действия")
+        await c.bot.edit_message_text(message_id=c.message.message_id, 
+                                      chat_id=c.from_user.id, 
+                                      text=f"Рассылка отменена",
+                                      reply_markup=ikb.back_to_main_menu_keyboard())
+    
+    await state.clear()
+    
+
+    
 
 
 async def generate_user_info_text(user: User) -> str:

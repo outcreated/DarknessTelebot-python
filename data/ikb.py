@@ -138,8 +138,8 @@ def apanel_menu_keyboard() -> InlineKeyboardMarkup:
     builder.btn(text=f"🎁 Промокоды", callback_data="admin_promocode_menu")
     builder.btn(text=f"🤖 Бот", callback_data="admin_")
 
-    builder.btn(text=f"📝 Скачать логи", callback_data="admin_")
-    builder.btn(text=f"🔔 Отправить рассылку", callback_data="admin_")
+    builder.btn(text=f"📝 Скачать логи", callback_data="admin_logs")
+    builder.btn(text=f"🔔 Отправить рассылку", callback_data="send_alert_for_users")
 
     builder.btn(text=f"🧩 Управление пользователями", callback_data="admin_manage_users")
 
@@ -272,6 +272,21 @@ def back_to_witdraw_request_keyboard(request_id: int) -> InlineKeyboardMarkup:
     builder.btn(text="⬅️ Назад", callback_data=f"withdraw_request@{request_id}")
 
     return builder.build()
+
+def send_alert_for_users_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text="✅ Отправить", callback_data="send_alert_for_users@accept")
+    builder.btn(text="❌ Отмена", callback_data="send_alert_for_users@cancel")
+
+    return builder.build(sizes=(1, 1))
+
+def download_logs_keyboard() -> InlineKeyboardMarkup:
+    builder = KeyboardBuilder()
+    builder.btn(text="📝 Последний", callback_data="admin_logs_download@latest")
+    builder.btn(text="💾 Все логи", callback_data="admin_logs_download@all")
+    builder.btn(text="⬅️ Назад", callback_data="admin_apanel_menu")
+
+    return builder.build(sizes=(2, 1))
 
 
 

@@ -1,6 +1,9 @@
+import time
 import config
 import cryptobot
 import datetime
+import logging
+import shutil
 
 from aiogram import Router, F
 from aiogram.types import CallbackQuery, FSInputFile
@@ -11,6 +14,7 @@ from database.database_core import PaidInvoice, Product, User, Promocode
 from data import ikb
 
 callback_router = Router()
+logger = logging.getLogger(__name__)
 
 
 # ================================================================
@@ -25,6 +29,7 @@ async def register_of_button(c: CallbackQuery):
         preRegisterUsers.pop(c.from_user.id)
         if status:
             await c.message.answer("Вы успешно зарегистрировались! Чтобы открыть главное меню бота, напишите /menu")
+            logger.fatal(f"Пользователь [{c.from_user.username}] зарегистрирован | ID: [{c.from_user.id}]")
         else:
             await c.message.answer("Вы уже зарегистрирваны!")
 
@@ -115,6 +120,8 @@ async def update_invoice_status(c: CallbackQuery):
         await requests_sub.add_subscription_to_user(status[1], c.from_user.id)
         await c.message.edit_text(text=await generate_user_text_profile(user),
                                   reply_markup=ikb.main_menu_keyboard(user))
+        
+        logger.fatal(f"Пользователь [{c.from_user.id}] оплатил счет счет | ID: {status[1]}")
 
 
 @callback_router.callback_query(F.data == "user_cancel_buy_subscription")
@@ -124,12 +131,14 @@ async def user_cancel_buy_subscription(c: CallbackQuery):
     await c.answer("❌ Оплата отменена", cache_time=5)
     await c.message.edit_text(text=await generate_user_text_profile(user),
                               reply_markup=ikb.main_menu_keyboard(user))
+    
+    logger.fatal(f"Пользователь [{c.from_user.id}] отменил оплату счета")
 
 
 @callback_router.callback_query(F.data.startswith("download_product@"))
 async def download_product(c: CallbackQuery):
     product_id = int(c.data.split("@")[1])
-    file_path = f'downloads/{product_id}.txt'  # Укажите путь к вашему файлу
+    file_path = f'downloads/{product_id}.rar'  # Укажите путь к вашему файлу
     await c.message.answer_document(caption="Приятного использования",
                                     document=FSInputFile(path=file_path))
     
@@ -158,6 +167,8 @@ async def user_accept_exchange_balance(c: CallbackQuery):
     await requests_user.update_user(user)
     await c.message.edit_text(text=f"✅ Вы успешно перевели <strong>{bal} $</strong> с вашего реферального баланса в <strong>{bal * 4}</strong> часов подписки!",
                               reply_markup=ikb.back_to_main_menu_keyboard())
+    
+    logger.fatal(f"Пользователь [{c.from_user.id}] перевел [{bal} $] с реферального баланса в [{bal * 4}] часов подписки для [{product_id}]")
 
 # ---------------------------------------------------
 # ---------------------------------------------------
@@ -177,6 +188,7 @@ async def user_ref_withdraw_money(c: CallbackQuery):
     else:
         await c.answer("✅ Вы успешно отправили заявку на вывод!\n\nОжидайте ответ от администратора",
                        show_alert=True)
+        logger.fatal(f"Пользователь [{c.from_user.id}] отправил запрос на вывод [{user.balance} $] с баланса")
 
 
 async def generate_refsystem_menu_text(user: User) -> str:
@@ -191,7 +203,8 @@ async def generate_refsystem_menu_text(user: User) -> str:
         ➖➖➖➖➖➖➖➖➖➖
 ► [ 📩 Информация ]
         ➖➖➖➖➖➖➖➖➖➖
-        ► <strong>Реферальная система</strong>
+        ► <strong>В данном разделе вы можете получить информацию о ваших рефералах, прибыли от них и получить свою реферальную ссылку для заработка денег</strong>
+        ► <strong>Для особо активных пользователей процент от пополнений увеличивается</strong>
     """
 
     return text
@@ -227,8 +240,8 @@ async def generate_product_menu_text() -> str:
 async def generate_current_product_menu_text(product: Product) -> str:
     text = f"""► [ 🔑 Меню товара ]
         ➖➖➖➖➖➖➖➖➖➖    
-        Название товара: <code>{product.name}</code>
-        Описание товара: {product.description}
+        Название: <code>{product.name}</code>
+        Описание: {product.description}
         Версия: <code>{product.version}</code>
         ➖➖➖➖➖➖➖➖➖➖    
             """
@@ -293,6 +306,7 @@ async def timestamp_to_sub_end_date(timestamp: int) -> str:
 
 @callback_router.callback_query(F.data.startswith("admin_"))
 async def admin_callback(c: CallbackQuery):
+    logger.fatal(f"Пользователь [{c.from_user.id}] воспользовался админ функцией [{c.data}]")
     user = await requests_user.get_user_by_telegram_id(c.from_user.id)
 
     if not user.isAdmin:
@@ -312,6 +326,8 @@ async def admin_callback(c: CallbackQuery):
             await admin_promocode_menu(c)
         case "manage_users":
             await admin_manage_users(c)
+        case "logs":
+            await admin_download_logs(c)
         case _ if callback_name.startswith("edit_product_menu@"):
             product_id = int(callback_name.split("@")[1])
             await admin_edit_product_menu(c, product_id)
@@ -320,6 +336,9 @@ async def admin_callback(c: CallbackQuery):
             product_id = str(callback_name.split(":")[1]).split("@")[1]
 
             await admin_edit_product(c, edit_type, product_id)
+        case _ if callback_name.startswith("logs_download@"):
+            type = callback_name.split("@")[1]
+            await admin_download_logs_get(c, type)
         case _:
             await c.answer(text="❌ Недопустимый параметр", show_alert=True)
 
@@ -373,6 +392,27 @@ async def admin_manage_users(c: CallbackQuery) -> None:
     await c.message.edit_text(text="Управление пользователями",
                               reply_markup=await ikb.admin_manage_users_keyboard())
 
+async def admin_download_logs(c: CallbackQuery) -> None:
+    await c.message.edit_text(text="При выборе <strong>Последний</strong> будет загружен лог файл текущего процесса бота\n\n"\
+                                   "При выборе <strong>Все логи</strong> будут выгружены все доступные логи",
+                                   
+                                   reply_markup=ikb.download_logs_keyboard())
+    
+async def admin_download_logs_get(c: CallbackQuery, type: str) -> None:
+    if type == "latest":
+        file_path = f'logs/latest.log'
+        await c.message.answer_document(caption="Последний лог файл текущего процесса бота",
+                                    document=FSInputFile(path=file_path))
+    else:
+        await c.answer("Создается архив со всеми логами. Ожидайте")
+        source_folder = 'logs/old'
+        archive_name = f'logs/download_{int(time.time())}'
+        shutil.make_archive(archive_name, 'zip', source_folder)
+        await c.message.answer_document(caption="Все логи успешно выгружены",
+                                    document=FSInputFile(path=f"{archive_name}.zip"))
+    
+
+
 
 @callback_router.callback_query(F.data.startswith("create_promocode_apanel?"))
 async def create_promocode_apanel(c: CallbackQuery, state: FSMContext):
@@ -394,6 +434,7 @@ async def create_promocode_apanel(c: CallbackQuery, state: FSMContext):
             await c.message.edit_text(
                 text=f"Промокод с названием #{promo_name} успешно создан! Осталось активаций: <strong>{promo_uses}</strong>",
                 reply_markup=ikb.back_to_main_menu_keyboard())
+            logger.fatal(f"Администратор [{c.from_user.id}] создал промокод с названием [{promo_name}]")
     except Exception as e:
         await c.message.edit_text(text=f"Произошла внутренняя ошибка: \n\n\n{e}",
                                   reply_markup=ikb.back_to_main_menu_keyboard())
@@ -439,11 +480,23 @@ async def user_withdraw_request(c: CallbackQuery):
 
             await c.message.edit_text(text=historyText, reply_markup=ikb.back_to_witdraw_request_keyboard(withdraw_request.id))
         case "accept":
-            await requests_user.accept_withdraw_request(c.from_user.id, int(c.data.split("user_withdraw_request_")[1].split("@")[0]))
+            await requests_user.accept_withdraw_request(user_id)
+            await c.answer(text="✅ Заявка на вывод средств одобрена")
+            await c.message.edit_text(text="Заявки на вывод средств от пользователей",
+                              reply_markup=await ikb.withdraw_requests_menu_keyboard())
+            await c.bot.send_message(chat_id=user_id, text="✅ Ваша заявка на вывод средств одобрена!")
+            logger.fatal(f"Администратор [{c.from_user.id}] одобрил заявку на вывод средств от пользователя [{user_id}]")
         case "decline":
-            await requests_user.decline_withdraw_request(c.from_user.id, int(c.data.split("user_withdraw_request_")[1].split("@")[0]))
+            await requests_user.decline_withdraw_request(user_id)
+            await c.answer(text="❌ Заявка на вывод средств отклонена")
+            await c.message.edit_text(text="Заявки на вывод средств от пользователей",
+                              reply_markup=await ikb.withdraw_requests_menu_keyboard())
+            await c.bot.send_message(chat_id=user_id, text="❌ Ваша заявка на вывод средств отклонена!")
+            logger.fatal(f"Администратор [{c.from_user.id}] отклонил заявку на вывод средств от пользователя [{user_id}]")
         case _:
             await c.answer(text="❌ Недопустимый параметр", show_alert=True)
+
+
 
 # ================================================================
 
