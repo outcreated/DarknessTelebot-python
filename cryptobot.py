@@ -8,7 +8,7 @@ from database import requests_server
 
 invoices_list = {}
 
-crypto = AioCryptoPay(config.CRYPTO_BOT_TOKEN, network=Networks.TEST_NET)
+crypto = AioCryptoPay(config.CRYPTO_BOT_TOKEN, network=Networks.MAIN_NET)
 
 
 @crypto.pay_handler()
